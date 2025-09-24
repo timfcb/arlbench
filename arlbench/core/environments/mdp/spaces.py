@@ -1,16 +1,9 @@
-import gymnasium as gym
 import gymnax
 import gymnax.environments.spaces
 import jax
 import jax.numpy as jnp
-import jax.random as jrandom
-import matplotlib.pyplot as plt
-import PIL.ImageDraw as ImageDraw
-import PIL.Image as Image
-from PIL.Image import FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM
 
 ### Spaces for the RL Toy Environment ### 
-
 
 class BoxExtended(gymnax.environments.spaces.Box):
     def __init__(self, low, high, shape=None, dtype=jnp.int64, seed=None):
@@ -24,7 +17,6 @@ class BoxExtended(gymnax.environments.spaces.Box):
     def sample(self, key: jax.Array) -> jax.Array:
         assert self.dtype == jnp.int64, "This sample method is optimized for int64 only."
         return jax.random.randint(key=key, shape=self.shape, minval=self.low, maxval=self.high, dtype=self.dtype)
-
 
 class ImageContinuous(gymnax.environments.spaces.Box):
     """A space that maps the current position of the agent and target to an image representation of the environment.

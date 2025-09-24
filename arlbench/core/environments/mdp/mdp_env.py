@@ -4,25 +4,11 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any
 
-import sys
-import os
-import  logging
-import  warnings
-import copy
-from datetime import datetime
-import scipy
-from scipy import stats
-from scipy.spatial import distance
-import gymnasium as gym
 import gymnax
 import gymnax.environments.spaces
 import jax
 import jax.numpy as jnp
-import jax.random as jrandom
 from flax import struct
-import PIL.ImageDraw as ImageDraw
-import PIL.Image as Image
-from PIL.Image import FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM
 
 from ..autorl_env import Environment
 from .spaces import BoxExtended, ImageContinuous
