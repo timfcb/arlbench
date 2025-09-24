@@ -1,0 +1,19 @@
+name: "Mdp-8x8_Matrix"
+framework: "mdp"
+n_total_timesteps: 50000
+kwargs:
+  seed: 1
+  grid_shape: [8, 8]
+  reward_function: move_to_a_point
+  dense_reward: True
+  state_representation: matrix
+eval_kwargs:
+  seed: 1
+  grid_shape: [8, 8]
+  reward_function: move_to_a_point
+  dense_reward: False
+  state_representation: matrix
+cnn_policy: True
+deterministic_eval: False
+jax_enable_x64: True
+n_envs: 4
