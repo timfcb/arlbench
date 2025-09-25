@@ -25,7 +25,7 @@ class EnvState():
     """Environment state for MDP Playground."""
     agent_position: jnp.ndarray
     target_position: jnp.ndarray
-    counter: int = 0
+    counter: int = 1
  
 ### Start of the MDP Playground ###
 class GridEnv:
@@ -36,7 +36,7 @@ class GridEnv:
         config: dict[str, Any] | None = None,
     ):
 
-        '''Dimensions of hardness in the environment'''
+        '''Dimensions of Hardness in the Environment'''
 
         self.grid_shape = tuple(config['grid_shape'])
 
@@ -49,6 +49,11 @@ class GridEnv:
             self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1] - 2)
         else:
             self.max_steps_in_episode = config['max_steps_in_episode']
+
+        if 'transition_noise' not in config:
+            self.transition_noise = 0.0
+        else:
+            self.transition_noise = config['transition_noise']
 
         # Scaling factor of reward signal
         if 'reward_scale' not in config:
@@ -74,7 +79,7 @@ class GridEnv:
         else:
             self.dense_reward = False
 
-        '''Initializing the environment spaces'''
+        '''Initializing the Environment Spaces'''
 
         # Initializing the action space
         self._action_space = gymnax.environments.spaces.Discrete(4)
@@ -108,15 +113,28 @@ class GridEnv:
 
     def step(self, env_state: Any, action: Any, rng: PRNGKey):
         """Steps the environment forward by one step."""
-        agent_position = env_state.agent_position
-        target_position = env_state.target_position
+        
+        # Transition noise
+        rng, rng_noise = jax.random.split(rng)
+        prob_noise = jax.random.uniform(rng_noise)
+        rng, rng_action = jax.random.split(rng)
+
+        final_action = jax.lax.cond(
+            prob_noise < self.transition_noise,
+            lambda _: self.action_space.sample(rng_action),
+            lambda _: action,
+            operand=None
+        )
 
         # Update agent location based on action
-        new_agent_position = jnp.clip(agent_position + self._action_to_direction[action], 0, self.grid_shape[0] - 1)
+        new_agent_position = jnp.clip(env_state.agent_position + self._action_to_direction[final_action], 0, self.grid_shape[0] - 1)
+
+        #jax.debug.print("Action taken/Action agent: {}/{}, Agent position before: {}, Agent Position after: {}, Target position: {}, Counter: {}, Random Value: {}, Transition Noise: {}, Max Steps: {}", final_action, action, env_state.agent_position, new_agent_position, env_state.target_position, env_state.counter, rand_value, self.transition_noise, self.max_steps_in_episode)
 
         # Check if episode is done (max steps or reached target)
+        # TODO debug/understand train function arlbench
         truncated = jnp.where(env_state.counter >= self.max_steps_in_episode, True, False)
-        terminated = jnp.all(new_agent_position == target_position)
+        terminated = jnp.all(new_agent_position == env_state.target_position)
         done = jnp.logical_or(terminated, truncated)
 
         # Compute reward signal
@@ -125,22 +143,20 @@ class GridEnv:
         reward = 0.0
         if self.dense_reward:
             # Dense reward: Reward is given for every step (change in manhattan distance to target)
-            manhat_dist_old = jnp.sum(jnp.abs(agent_position - target_position))
-            manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - target_position))
+            manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
+            manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
             reward = manhat_dist_old - manhat_dist_new
         else:
             # Sparse reward: Reward is only given when target is reached
             reward = jnp.where(terminated, 1.0, 0.0)
-        # Scale the reward and apply reward probability   
-        reward = self.reward_scale * jnp.where(rand_value < self.reward_probability, reward, 0.0)
-        reward = reward + self.reward_shift
-        reward = reward.astype(jnp.float64)
+        # Reward scaling, probability, and shifting  
+        reward = (self.reward_scale * jnp.where(rand_value < self.reward_probability, reward, 0.0)) + self
 
         # Update the environment state
-        env_state = EnvState(agent_position=new_agent_position, target_position=target_position, counter=env_state.counter + 1)
+        env_state = EnvState(agent_position=new_agent_position, target_position=env_state.target_position, counter=env_state.counter + 1)
 
         # Compute observation based on state representation (image, vector, matrix)
-        observation = self.get_obs(new_agent_position, target_position)
+        observation = self.get_obs(new_agent_position, env_state.target_position)
 
         return env_state, (observation, reward, done, {})
 
@@ -248,6 +264,7 @@ class GridEnv:
             raise ValueError(f"Unknown state representation: {self.state_representation}. Supported are 'image', 'vector', and 'matrix'.")
         
         return observation
+
 
 class MdpPlaygroundEnv(Environment):
     """A MDP playground-based RL environment."""

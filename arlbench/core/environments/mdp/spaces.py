@@ -14,8 +14,7 @@ class BoxExtended(gymnax.environments.spaces.Box):
         self.dtype = dtype
 
     # Overrides sample method from Box space in gymnax: We need random int instead of random float
-    def sample(self, key: jax.Array) -> jax.Array:
-        assert self.dtype == jnp.int64, "This sample method is optimized for int64 only."
+    def sample(self, key: jax.random.PRNGKey) -> jax.Array:
         return jax.random.randint(key=key, shape=self.shape, minval=self.low, maxval=self.high, dtype=self.dtype)
 
 class ImageContinuous(gymnax.environments.spaces.Box):
