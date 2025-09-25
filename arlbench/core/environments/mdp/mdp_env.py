@@ -45,7 +45,8 @@ class GridEnv:
 
         # Epsiode is truncated if goal is not reached within max_steps_in_episode
         if 'max_steps_in_episode' not in config:
-            self.max_steps_in_episode = 50
+            # If not specified in config, compute as 2 times max distance in grid for reaching target
+            self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1] - 2)
         else:
             self.max_steps_in_episode = config['max_steps_in_episode']
 

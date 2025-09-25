@@ -1,15 +1,15 @@
-name: "Mdp-8x8_Image"
+name: "Mdp-9x9_Image"
 framework: "mdp"
-n_total_timesteps: 100000
+n_total_timesteps: 1000000
 kwargs:
   seed: 1
-  grid_shape: [8, 8]
+  grid_shape: [9, 9]
   reward_function: move_to_a_point
   dense_reward: True
   state_representation: image
 eval_kwargs:
   seed: 1
-  grid_shape: [8, 8]
+  grid_shape: [9, 9]
   reward_function: move_to_a_point
   dense_reward: False
   state_representation: image
