@@ -7,14 +7,20 @@ kwargs:
   reward_function: move_to_a_point
   dense_reward: True
   state_representation: vector
-  transition_noise: 0.2
-  reward_delay: 1
+  reward_noise: 0.3
+  reward_shift: -0.1
+  reward_scale: 2.0
+  reward_probability: 0.8
 eval_kwargs:
   seed: 1
   grid_shape: [5, 5]
   reward_function: move_to_a_point
   dense_reward: False
   state_representation: vector
+  reward_noise: 0.3
+  reward_shift: -0.1
+  reward_scale: 2.0
+  reward_probability: 0.8
 cnn_policy: False
 deterministic_eval: True
 jax_enable_x64: True

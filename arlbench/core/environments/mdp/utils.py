@@ -50,10 +50,11 @@ def get_obs(state_representation: str, grid_shape: Tuple[int, int], observation_
     
     return observation
 
-def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, dense_reward: bool, reward_scale: float, reward_shift: float, reward_probability: float, reward_delay: int):
+def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, dense_reward: bool, reward_scale: float, reward_shift: float, reward_probability: float, reward_delay: int, reward_noise_std:float):
     
     reward = jnp.float64(0.0)
 
+    # Environment property: Dense vs Sparse reward
     if dense_reward:
         # Dense reward: Reward is given for every step (change in manhattan distance to target)
         manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
@@ -63,10 +64,18 @@ def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray
         # Sparse reward: Reward is only given when target is reached
         reward = jnp.where(terminated, 1.0, 0.0)
 
+    # Environment property: Reward scaling
     reward = reward * reward_scale
 
+    # Environment property: Reward shift
     reward = reward + reward_shift
 
+    # Environment property: Reward noise
+    rng, rng_noise = jax.random.split(rng)
+    noise = jax.random.normal(rng_noise) * reward_noise_std
+    reward = reward + noise
+
+    # Environment property: Reward probability
     rng, rng_reward = jax.random.split(rng)
     rand_value = jax.random.uniform(rng_reward)
     reward = jax.lax.cond(
@@ -76,7 +85,7 @@ def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray
         operand=None
     )
     
-    # TODO Discuss with Julian: What happens at beginning/end of episode with delayed rewards?
+    # Environment property: Reward delay
     if reward_delay > 1:
         returned_reward = env_state.delayed_rewards[0]
         delayed_rewards = jnp.append(env_state.delayed_rewards[1:], reward)
@@ -86,5 +95,7 @@ def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray
     else: # reward delay == 0
         delayed_rewards = jnp.array([])
         returned_reward = reward
+
+    # TODO Discuss with Julian: What happens at beginning/end of episode with delayed rewards?
     
     return returned_reward, delayed_rewards

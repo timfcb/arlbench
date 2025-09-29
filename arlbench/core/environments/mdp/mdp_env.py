@@ -46,23 +46,23 @@ class GridEnv:
         self.state_representation = config['state_representation']
 
         # Epsiode is truncated if goal is not reached within max_steps_in_episode
-        if 'max_steps_in_episode' not in config:
+        if 'max_steps_in_episode' in config:
             # If not specified in config, compute as 2 times max distance in grid for reaching target
-            self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1] - 2)
-        else:
             self.max_steps_in_episode = config['max_steps_in_episode']
+        else:
+            self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1] - 2)
 
         # Transition noise (probability of taking a random action instead of the intended one)
-        if 'transition_noise' not in config:
-            self.transition_noise = 0.0
-        else:
+        if 'transition_noise' in config:
             self.transition_noise = config['transition_noise']
+        else:
+            self.transition_noise = 0.0
 
         # Scaling factor of reward signal
-        if 'reward_scale' not in config:
-            self.reward_scale = 1.0
-        else:
+        if 'reward_scale' in config:
             self.reward_scale = config['reward_scale']
+        else:
+            self.reward_scale = 1.0
 
         # Reward is given with a certain probability (otherwise prob is 1)
         if 'reward_probability' in config:
@@ -71,10 +71,10 @@ class GridEnv:
             self.reward_probability = 1.0
 
         # Reward is shifted by a constant value
-        if 'reward_shift' not in config:
-            self.reward_shift = 0.0
-        else:
+        if 'reward_shift' in config:
             self.reward_shift = config['reward_shift']
+        else:
+            self.reward_shift = 0.0
 
         # Dense reward signal (otherwise sparse)
         if 'dense_reward' in config:
@@ -82,10 +82,16 @@ class GridEnv:
         else:
             self.dense_reward = False
 
+        # Reward delay (0 = no delay, 1 = reward is given at next step, etc.)
         if 'reward_delay' in config:
             self.reward_delay = config['reward_delay']
         else:
             self.reward_delay = 0
+
+        if 'reward_noise' in config:
+            self.reward_noise_std = config['reward_noise']
+        else:
+            self.reward_noise_std = 0.0
 
         ### TODO implement irrelevant features
         if 'irrelevant_features' in config:
@@ -156,7 +162,8 @@ class GridEnv:
             self.reward_scale,
             self.reward_shift,
             self.reward_probability,
-            self.reward_delay
+            self.reward_delay,
+            self.reward_noise_std
         )
 
         # Compute new environment state and observation
