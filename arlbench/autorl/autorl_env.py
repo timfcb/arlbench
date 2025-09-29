@@ -538,7 +538,6 @@ class AutoRLEnv(gymnasium.Env):
         Returns:
             np.ndarray: Array of evaluation return for each episode.
         """
-        num_eval_episodes = 1
         if self._algorithm is None or self._algorithm_state is None:
             raise ValueError("Agent not initialized. Call reset() first.")
         rewards = self._algorithm.eval(
