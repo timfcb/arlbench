@@ -1,20 +1,21 @@
-name: "Mdp-6x6_Vector"
+name: "Mdp-5x5_Vector"
 framework: "mdp"
 n_total_timesteps: 2000
 kwargs:
   seed: 1
-  grid_shape: [6, 6]
+  grid_shape: [5, 5]
   reward_function: move_to_a_point
   dense_reward: True
   state_representation: vector
   transition_noise: 0.2
+  reward_delay: 1
 eval_kwargs:
   seed: 1
-  grid_shape: [6, 6]
+  grid_shape: [5, 5]
   reward_function: move_to_a_point
   dense_reward: False
   state_representation: vector
 cnn_policy: False
 deterministic_eval: True
 jax_enable_x64: True
-n_envs: 4
+n_envs: 1

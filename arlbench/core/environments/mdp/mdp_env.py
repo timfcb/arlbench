@@ -12,6 +12,7 @@ from flax import struct
 
 from ..autorl_env import Environment
 from .spaces import BoxExtended, ImageContinuous
+from .utils import get_obs, compute_reward
 
 if TYPE_CHECKING:
     from chex import PRNGKey
@@ -26,6 +27,7 @@ class EnvState():
     agent_position: jnp.ndarray
     target_position: jnp.ndarray
     counter: int = 1
+    delayed_rewards: jnp.ndarray = jnp.array([], dtype=jnp.float64)
  
 ### Start of the MDP Playground ###
 class GridEnv:
@@ -50,6 +52,7 @@ class GridEnv:
         else:
             self.max_steps_in_episode = config['max_steps_in_episode']
 
+        # Transition noise (probability of taking a random action instead of the intended one)
         if 'transition_noise' not in config:
             self.transition_noise = 0.0
         else:
@@ -78,6 +81,17 @@ class GridEnv:
             self.dense_reward = config['dense_reward']
         else:
             self.dense_reward = False
+
+        if 'reward_delay' in config:
+            self.reward_delay = config['reward_delay']
+        else:
+            self.reward_delay = 0
+
+        ### TODO implement irrelevant features
+        if 'irrelevant_features' in config:
+            self.irrelevant_features = config['irrelevant_features']
+        else:
+            self.irrelevant_features = False
 
         '''Initializing the Environment Spaces'''
 
@@ -113,50 +127,41 @@ class GridEnv:
 
     def step(self, env_state: Any, action: Any, rng: PRNGKey):
         """Steps the environment forward by one step."""
-        
-        # Transition noise
-        rng, rng_noise = jax.random.split(rng)
-        prob_noise = jax.random.uniform(rng_noise)
-        rng, rng_action = jax.random.split(rng)
 
+        # Compute new agent position based on action
+        rng, rng_noise, rng_action = jax.random.split(rng, 3)
+        prob_noise = jax.random.uniform(rng_noise) 
         final_action = jax.lax.cond(
             prob_noise < self.transition_noise,
             lambda _: self.action_space.sample(rng_action),
             lambda _: action,
             operand=None
         )
-
-        # Update agent location based on action
         new_agent_position = jnp.clip(env_state.agent_position + self._action_to_direction[final_action], 0, self.grid_shape[0] - 1)
 
-        #jax.debug.print("Action taken/Action agent: {}/{}, Agent position before: {}, Agent Position after: {}, Target position: {}, Counter: {}, Random Value: {}, Transition Noise: {}, Max Steps: {}", final_action, action, env_state.agent_position, new_agent_position, env_state.target_position, env_state.counter, rand_value, self.transition_noise, self.max_steps_in_episode)
-
-        # Check if episode is done (max steps or reached target)
-        # TODO debug/understand train function arlbench
+        # Check if episode is done
         truncated = jnp.where(env_state.counter >= self.max_steps_in_episode, True, False)
         terminated = jnp.all(new_agent_position == env_state.target_position)
         done = jnp.logical_or(terminated, truncated)
 
+        #jax.debug.print("Counter: {}, Terminated: {}, Truncated: {}, Done: {}, Agent Position before/after: {}/{}, Target Position: {}", env_state.counter, terminated, truncated, done, env_state.agent_position, new_agent_position, env_state.target_position)
+
         # Compute reward signal
-        rng, rng_reward = jax.random.split(rng)
-        rand_value = jax.random.uniform(rng_reward)
-        reward = 0.0
-        if self.dense_reward:
-            # Dense reward: Reward is given for every step (change in manhattan distance to target)
-            manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
-            manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
-            reward = manhat_dist_old - manhat_dist_new
-        else:
-            # Sparse reward: Reward is only given when target is reached
-            reward = jnp.where(terminated, 1.0, 0.0)
-        # Reward scaling, probability, and shifting  
-        reward = (self.reward_scale * jnp.where(rand_value < self.reward_probability, reward, 0.0)) + self
+        reward, delayed_rewards = compute_reward(
+            rng, 
+            env_state, 
+            new_agent_position, 
+            terminated,
+            self.dense_reward,
+            self.reward_scale,
+            self.reward_shift,
+            self.reward_probability,
+            self.reward_delay
+        )
 
-        # Update the environment state
-        env_state = EnvState(agent_position=new_agent_position, target_position=env_state.target_position, counter=env_state.counter + 1)
-
-        # Compute observation based on state representation (image, vector, matrix)
-        observation = self.get_obs(new_agent_position, env_state.target_position)
+        # Compute new environment state and observation
+        env_state = EnvState(agent_position=new_agent_position, target_position=env_state.target_position, counter=env_state.counter + 1, delayed_rewards=delayed_rewards)
+        observation = get_obs(self.state_representation, self.grid_shape, self.observation_space, new_agent_position, env_state.target_position)
 
         return env_state, (observation, reward, done, {})
 
@@ -173,7 +178,7 @@ class GridEnv:
 
         # While loop to draw random target location until it is not equal to the agent position
         def body_fn(state):
-            """Body function for JAX while loop. Performs one parallel step in all environments.
+            """Body function for JAX while loop. Generates possible new target location.
 
             Args:
                 state (tuple): Key and impossible target location.
@@ -205,11 +210,10 @@ class GridEnv:
         state = (rng, agent_position)
         key_final, target_position = jax.lax.while_loop(cond_fn, body_fn, state)
 
-        # New environment state with new randomized agent and target locations
-        env_state = EnvState(agent_position=agent_position, target_position=target_position)
+        delayed_rewards = jnp.zeros(self.reward_delay, dtype=jnp.float64)
+        env_state = EnvState(agent_position=agent_position, target_position=target_position, delayed_rewards=delayed_rewards)
 
-        # Compute observation based on state representation (image, vector, matrix)
-        observation = self.get_obs(agent_position, target_position)
+        observation = get_obs(self.state_representation, self.grid_shape, self.observation_space, agent_position, target_position)
 
         return env_state, observation
 
@@ -220,50 +224,6 @@ class GridEnv:
     @property
     def observation_space(self):
         return self._observation_space
-    
-    # Greyscaling used in Atari preprocessing (https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
-    def rgb_to_greyscale(self, rgb_image: jnp.ndarray) -> jnp.ndarray:
-        """Converts an RGB image to greyscale by extracting the Y channel.
-        Args:
-            rgb_image (jnp.ndarray): Input RGB image of shape (H, W, 3).
-
-        Returns:
-            jnp.ndarray: Greyscaled image of shape (H, W, 1).
-        """
-        # Standard formula to convert RGB to greyscale
-        R, G, B = rgb_image[:, :, 0], rgb_image[:, :, 1], rgb_image[:, :, 2]
-        # Extracting the y component (luminance) from the YUV color space
-        greyscale_image = 0.299 * R + 0.587 * G + 0.114 * B
-        greyscale_image = jnp.expand_dims(greyscale_image, axis=-1)
-        return greyscale_image
-    
-    def get_obs(self, agent_position: jax.Array, target_position: jax.Array) -> Any:
-        """Computes the observation based on the state representation (image, vector, matrix).
-
-        Args:
-            agent_position: Current agent position.
-            target_position: Current target position.
-
-        Returns:
-            Any: Observation based on the state representation.
-        """
-        # Image returns a greyscaled image
-        if self.state_representation == 'image':
-            rgb_image = self._observation_space.generate_image(agent_position, target_position)
-            observation = self.rgb_to_greyscale(rgb_image)
-        # Vector returns a 4 dimensional vector with agent and target positions
-        elif self.state_representation == 'vector':
-            observation = jnp.concatenate([agent_position, target_position])
-        # Matrix returns a matrix with 0 for empty cells, 1 for agent position and 2 for target position
-        elif self.state_representation == 'matrix':
-            grid_matrix = jnp.zeros(self.grid_shape, dtype=jnp.int64)
-            # Set agent position to 1 and target position to 2 (flip x/y coordinates for correct orientation)
-            grid_matrix = grid_matrix.at[agent_position[1], agent_position[0]].set(1).at[target_position[1], target_position[0]].set(2)
-            observation = jnp.expand_dims(grid_matrix, axis=-1)
-        else:
-            raise ValueError(f"Unknown state representation: {self.state_representation}. Supported are 'image', 'vector', and 'matrix'.")
-        
-        return observation
 
 
 class MdpPlaygroundEnv(Environment):
