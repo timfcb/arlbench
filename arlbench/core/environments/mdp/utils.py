@@ -20,11 +20,12 @@ def rgb_to_greyscale(self, rgb_image: jnp.ndarray) -> jnp.ndarray:
     greyscale_image = jnp.expand_dims(greyscale_image, axis=-1)
     return greyscale_image
 
-def get_obs(state_representation: str, grid_shape: Tuple[int, int], observation_space: Any, agent_position: jax.Array, target_position: jax.Array) -> Any:
+def get_obs(state_representation: str, irrelevant_features: bool, grid_shape: Tuple[int, int], observation_space: Any, agent_position: jax.Array, target_position: jax.Array) -> Any:
     """Computes the observation based on the state representation (image, vector, matrix).
 
     Args:
         state_representation (str): State representation type ('image', 'vector', 'matrix').
+        irrelevant_features (bool): Whether to include irrelevant features in the observation.
         grid_shape (Tuple[int, int]): Shape of the grid world (width, height).
         agent_position: Current agent position.
         target_position: Current target position.
@@ -38,16 +39,24 @@ def get_obs(state_representation: str, grid_shape: Tuple[int, int], observation_
         observation = rgb_to_greyscale(rgb_image)
     # Vector returns a 4 dimensional vector with agent and target positions
     elif state_representation == 'vector':
-        observation = jnp.concatenate([agent_position, target_position])
+        if irrelevant_features:
+            observation = jnp.concatenate([agent_position, target_position, agent_position, target_position])
+        else:
+            observation = jnp.concatenate([agent_position, target_position])
     # Matrix returns a matrix with 0 for empty cells, 1 for agent position and 2 for target position
     elif state_representation == 'matrix':
+        if irrelevant_features:
+            grid_shape = tuple(x * 2 for x in grid_shape)
+
         grid_matrix = jnp.zeros(grid_shape, dtype=jnp.int64)
         # Set agent position to 1 and target position to 2 (flip x/y coordinates for correct orientation)
         grid_matrix = grid_matrix.at[agent_position[1], agent_position[0]].set(1).at[target_position[1], target_position[0]].set(2)
         observation = jnp.expand_dims(grid_matrix, axis=-1)
+
     else:
         raise ValueError(f"Unknown state representation: {state_representation}. Supported are 'image', 'vector', and 'matrix'.")
     
+    jax.debug.print("Observation: {obs}", obs=observation)
     return observation
 
 def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, dense_reward: bool, reward_scale: float, reward_shift: float, reward_probability: float, reward_delay: int, reward_noise_std:float):

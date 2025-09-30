@@ -20,6 +20,11 @@ if TYPE_CHECKING:
 # Found on Stack Overflow (only needed for Windows)
 jax.config.update("jax_enable_x64", True)
 
+### TODO
+# Irrelevat features (extra dimensions in observation space that do not contain any information)
+# Changing target position during an episodes?
+# Terminal States
+
 #Dataclass for defining Environment States
 @struct.dataclass
 class EnvState():
@@ -113,19 +118,23 @@ class GridEnv:
 
         # Initializing the observation space (RGB image or agent position as array)
         if self.state_representation == 'vector':
+            if self.irrelevant_features:
+                self.grid_shape = self.grid_shape * 2
             self._observation_space = BoxExtended(
-                jnp.array([0,0,0,0], dtype=jnp.int64),
-                jnp.array([self.grid_shape[0] - 1, self.grid_shape[1] - 1, self.grid_shape[0] - 1, self.grid_shape[1] - 1], dtype=jnp.int64),
-                (4,),
+                jnp.array(jnp.zeros(len(self.grid_shape)) * 2, dtype=jnp.int64),
+                jnp.array([(self.grid_shape[i] - 1) for i in range(len(self.grid_shape))]*2, dtype=jnp.int64),
+                (len(self.grid_shape)*2,),
                 dtype=jnp.int64
             )
         elif self.state_representation == 'matrix':
             self._observation_space = BoxExtended(
                 low=0,
                 high=2,
-                shape=(self.grid_shape[0], self.grid_shape[1]),
+                shape= self.grid_shape * 2,
                 dtype=jnp.int64
             )
+
+        # TODO Überlegen wie Irrelevante Features in Image Representation aussehen können
         elif self.state_representation == 'image':
             self._observation_space = ImageContinuous()
         else:
@@ -150,13 +159,11 @@ class GridEnv:
         terminated = jnp.all(new_agent_position == env_state.target_position)
         done = jnp.logical_or(terminated, truncated)
 
-        #jax.debug.print("Counter: {}, Terminated: {}, Truncated: {}, Done: {}, Agent Position before/after: {}/{}, Target Position: {}", env_state.counter, terminated, truncated, done, env_state.agent_position, new_agent_position, env_state.target_position)
-
         # Compute reward signal
         reward, delayed_rewards = compute_reward(
-            rng, 
-            env_state, 
-            new_agent_position, 
+            rng,
+            env_state,
+            new_agent_position,
             terminated,
             self.dense_reward,
             self.reward_scale,
@@ -168,7 +175,7 @@ class GridEnv:
 
         # Compute new environment state and observation
         env_state = EnvState(agent_position=new_agent_position, target_position=env_state.target_position, counter=env_state.counter + 1, delayed_rewards=delayed_rewards)
-        observation = get_obs(self.state_representation, self.grid_shape, self.observation_space, new_agent_position, env_state.target_position)
+        observation = get_obs(self.state_representation, self.irrelevant_features, self.grid_shape, self.observation_space, new_agent_position, env_state.target_position)
 
         return env_state, (observation, reward, done, {})
 
@@ -220,7 +227,7 @@ class GridEnv:
         delayed_rewards = jnp.zeros(self.reward_delay, dtype=jnp.float64)
         env_state = EnvState(agent_position=agent_position, target_position=target_position, delayed_rewards=delayed_rewards)
 
-        observation = get_obs(self.state_representation, self.grid_shape, self.observation_space, agent_position, target_position)
+        observation = get_obs(self.state_representation, self.irrelevant_features, self.grid_shape, self.observation_space, agent_position, target_position)
 
         return env_state, observation
 

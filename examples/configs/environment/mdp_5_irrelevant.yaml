@@ -1,0 +1,21 @@
+name: "Mdp-5x5_Irrelevant"
+framework: "mdp"
+n_total_timesteps: 100000
+kwargs:
+  seed: 1
+  grid_shape: [5, 5]
+  reward_function: move_to_a_point
+  dense_reward: True
+  state_representation: vector
+  irrelevant_features: True
+eval_kwargs:
+  seed: 1
+  grid_shape: [5, 5]
+  reward_function: move_to_a_point
+  dense_reward: False
+  state_representation: vector
+  irrelevant_features: True
+cnn_policy: False
+deterministic_eval: True
+jax_enable_x64: True
+n_envs: 1
