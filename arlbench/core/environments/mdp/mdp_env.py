@@ -119,22 +119,26 @@ class GridEnv:
         # Initializing the observation space (RGB image or agent position as array)
         if self.state_representation == 'vector':
             if self.irrelevant_features:
-                self.grid_shape = self.grid_shape * 2
+                shape = self.grid_shape * 2
+            else:
+                shape = self.grid_shape
             self._observation_space = BoxExtended(
-                jnp.array(jnp.zeros(len(self.grid_shape)) * 2, dtype=jnp.int64),
-                jnp.array([(self.grid_shape[i] - 1) for i in range(len(self.grid_shape))]*2, dtype=jnp.int64),
-                (len(self.grid_shape)*2,),
+                jnp.array(jnp.zeros(len(shape)) * 2, dtype=jnp.int64),
+                jnp.array([(shape[i] - 1) for i in range(len(shape))]*2, dtype=jnp.int64),
+                (len(shape)*2,),
                 dtype=jnp.int64
             )
         elif self.state_representation == 'matrix':
+            if self.irrelevant_features:
+                shape = tuple(x * 2 for x in self.grid_shape)
+            else:
+                shape = self.grid_shape
             self._observation_space = BoxExtended(
                 low=0,
                 high=2,
-                shape= self.grid_shape * 2,
+                shape= shape,
                 dtype=jnp.int64
             )
-
-        # TODO Überlegen wie Irrelevante Features in Image Representation aussehen können
         elif self.state_representation == 'image':
             self._observation_space = ImageContinuous()
         else:

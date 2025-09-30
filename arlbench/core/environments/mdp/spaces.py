@@ -2,6 +2,8 @@ import gymnax
 import gymnax.environments.spaces
 import jax
 import jax.numpy as jnp
+from typing import Tuple
+import matplotlib.pyplot as plt
 
 ### Spaces for the RL Toy Environment ### 
 
@@ -37,7 +39,7 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         )
 
     
-    def generate_image(self, agent_position: jax.Array, target_position: jax.Array) -> jax.Array:
+    def generate_image(self, agent_position: jax.Array, target_position: jax.Array, irrelevant_features: bool, grid_shape: Tuple[int,int]) -> jax.Array:
         """Returns the hyperparameter configuration space of the algorithm.
 
         Args:
@@ -47,7 +49,11 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         Returns:
             jnp.ndarry: greyscaled image of the environment with shape [84, 84, 1].
         """
-        cols, rows = (6,6)
+        cols, rows = grid_shape
+
+        if irrelevant_features:
+            cols, rows = cols * 2, rows * 2
+
         final_size = 84
         square_ratio = 1
         grid_thickness = 1

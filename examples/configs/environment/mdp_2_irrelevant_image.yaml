@@ -1,0 +1,21 @@
+name: "Mdp-2x2_Irrelevant_Image"
+framework: "mdp"
+n_total_timesteps: 1000
+kwargs:
+  seed: 1
+  grid_shape: [2, 2]
+  reward_function: move_to_a_point
+  dense_reward: True
+  state_representation: image
+  irrelevant_features: True
+eval_kwargs:
+  seed: 1
+  grid_shape: [2, 2]
+  reward_function: move_to_a_point
+  dense_reward: False
+  state_representation: image
+  irrelevant_features: True
+cnn_policy: True
+deterministic_eval: True
+jax_enable_x64: True
+n_envs: 1

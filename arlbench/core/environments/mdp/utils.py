@@ -5,7 +5,7 @@ from jax.random import PRNGKey
 from typing import TYPE_CHECKING, Any, Tuple
 
 # Greyscaling used in Atari preprocessing (https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
-def rgb_to_greyscale(self, rgb_image: jnp.ndarray) -> jnp.ndarray:
+def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
     """Converts an RGB image to greyscale by extracting the Y channel.
     Args:
         rgb_image (jnp.ndarray): Input RGB image of shape (H, W, 3).
@@ -35,7 +35,7 @@ def get_obs(state_representation: str, irrelevant_features: bool, grid_shape: Tu
     """
     # Image returns a greyscaled image
     if state_representation == 'image':
-        rgb_image = observation_space.generate_image(agent_position, target_position)
+        rgb_image = observation_space.generate_image(agent_position, target_position, irrelevant_features, grid_shape)
         observation = rgb_to_greyscale(rgb_image)
     # Vector returns a 4 dimensional vector with agent and target positions
     elif state_representation == 'vector':
@@ -56,7 +56,6 @@ def get_obs(state_representation: str, irrelevant_features: bool, grid_shape: Tu
     else:
         raise ValueError(f"Unknown state representation: {state_representation}. Supported are 'image', 'vector', and 'matrix'.")
     
-    jax.debug.print("Observation: {obs}", obs=observation)
     return observation
 
 def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, dense_reward: bool, reward_scale: float, reward_shift: float, reward_probability: float, reward_delay: int, reward_noise_std:float):
