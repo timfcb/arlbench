@@ -239,7 +239,6 @@ class GridEnv:
     def observation_space(self):
         return self._observation_space
 
-
 class MdpPlaygroundEnv(Environment):
     """A MDP playground-based RL environment."""
     def __init__(self, env_name: str, n_envs: int, config: dict[str, Any] | None = None):
