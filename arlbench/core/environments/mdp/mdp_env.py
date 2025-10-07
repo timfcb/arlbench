@@ -11,8 +11,7 @@ import jax.numpy as jnp
 from flax import struct
 
 from ..autorl_env import Environment
-from .spaces import BoxExtended, ImageContinuous
-from .utils import get_obs, compute_reward
+from .utils import get_obs, compute_reward, init_obs_space, get_random_positions
 
 if TYPE_CHECKING:
     from chex import PRNGKey
@@ -20,10 +19,10 @@ if TYPE_CHECKING:
 # Found on Stack Overflow (only needed for Windows)
 jax.config.update("jax_enable_x64", True)
 
-### TODO
-# Irrelevat features (extra dimensions in observation space that do not contain any information)
-# Changing target position during an episodes?
-# Terminal States
+# TODO #
+# Term state testing
+# Done flag testing
+# Reward state with struct dataclass -> for readability
 
 #Dataclass for defining Environment States
 @struct.dataclass
@@ -31,8 +30,9 @@ class EnvState():
     """Environment state for MDP Playground."""
     agent_position: jnp.ndarray
     target_position: jnp.ndarray
-    counter: int = 1
+    terminal_states: jnp.ndarray = jnp.array([], dtype=jnp.int64)
     delayed_rewards: jnp.ndarray = jnp.array([], dtype=jnp.float64)
+    counter: int = 1
  
 ### Start of the MDP Playground ###
 class GridEnv:
@@ -45,49 +45,46 @@ class GridEnv:
 
         '''Dimensions of Hardness in the Environment'''
 
-        self.grid_shape = tuple(config['grid_shape'])
+        if 'grid_shape' in config:
+            self.grid_shape = tuple(config['grid_shape'])
+        else:
+            self.grid_shape = (5, 5)
 
-        # State Representation (vector, matrix, image)
-        self.state_representation = config['state_representation']
+        if 'state_representation' in config:
+            self.state_representation = config['state_representation']
+        else:
+            self.state_representation = 'vector'
 
-        # Epsiode is truncated if goal is not reached within max_steps_in_episode
         if 'max_steps_in_episode' in config:
-            # If not specified in config, compute as 2 times max distance in grid for reaching target
             self.max_steps_in_episode = config['max_steps_in_episode']
         else:
             self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1] - 2)
 
-        # Transition noise (probability of taking a random action instead of the intended one)
         if 'transition_noise' in config:
             self.transition_noise = config['transition_noise']
         else:
             self.transition_noise = 0.0
 
-        # Scaling factor of reward signal
         if 'reward_scale' in config:
             self.reward_scale = config['reward_scale']
         else:
             self.reward_scale = 1.0
 
-        # Reward is given with a certain probability (otherwise prob is 1)
         if 'reward_probability' in config:
             self.reward_probability = config['reward_probability']
         else:
             self.reward_probability = 1.0
 
-        # Reward is shifted by a constant value
         if 'reward_shift' in config:
             self.reward_shift = config['reward_shift']
         else:
             self.reward_shift = 0.0
 
-        # Dense reward signal (otherwise sparse)
         if 'dense_reward' in config:
             self.dense_reward = config['dense_reward']
         else:
             self.dense_reward = False
 
-        # Reward delay (0 = no delay, 1 = reward is given at next step, etc.)
         if 'reward_delay' in config:
             self.reward_delay = config['reward_delay']
         else:
@@ -98,7 +95,17 @@ class GridEnv:
         else:
             self.reward_noise_std = 0.0
 
-        ### TODO implement irrelevant features
+        # TODO: Implement
+        if 'reward_every_n_steps' in config:
+            self.reward_every_n_steps = config['reward_every_n_steps']
+        else:
+            self.reward_every_n_steps = 1
+
+        if 'number_terminal_states' in config:
+            self.number_terminal_states = config['number_terminal_states']
+        else:
+            self.number_terminal_states = 0
+
         if 'irrelevant_features' in config:
             self.irrelevant_features = config['irrelevant_features']
         else:
@@ -116,33 +123,7 @@ class GridEnv:
             [0, 1],   # 3: Move up (positive y)
         ])
 
-        # Initializing the observation space (RGB image or agent position as array)
-        if self.state_representation == 'vector':
-            if self.irrelevant_features:
-                shape = self.grid_shape * 2
-            else:
-                shape = self.grid_shape
-            self._observation_space = BoxExtended(
-                jnp.array(jnp.zeros(len(shape)) * 2, dtype=jnp.int64),
-                jnp.array([(shape[i] - 1) for i in range(len(shape))]*2, dtype=jnp.int64),
-                (len(shape)*2,),
-                dtype=jnp.int64
-            )
-        elif self.state_representation == 'matrix':
-            if self.irrelevant_features:
-                shape = tuple(x * 2 for x in self.grid_shape)
-            else:
-                shape = self.grid_shape
-            self._observation_space = BoxExtended(
-                low=0,
-                high=2,
-                shape= shape,
-                dtype=jnp.int64
-            )
-        elif self.state_representation == 'image':
-            self._observation_space = ImageContinuous()
-        else:
-            raise ValueError(f"Unknown state representation: {self.state_representation}. Supported are 'image', 'vector', and 'matrix'.")
+        self._observation_space = init_obs_space(self.state_representation, self.irrelevant_features, self.grid_shape, self.number_terminal_states)
 
     def step(self, env_state: Any, action: Any, rng: PRNGKey):
         """Steps the environment forward by one step."""
@@ -161,7 +142,8 @@ class GridEnv:
         # Check if episode is done
         truncated = jnp.where(env_state.counter >= self.max_steps_in_episode, True, False)
         terminated = jnp.all(new_agent_position == env_state.target_position)
-        done = jnp.logical_or(terminated, truncated)
+        reached_term = jnp.any(jnp.all(env_state.terminal_states == new_agent_position, axis=1))
+        done = jnp.any(jnp.array([truncated, terminated, reached_term]))
 
         # Compute reward signal
         reward, delayed_rewards = compute_reward(
@@ -178,60 +160,51 @@ class GridEnv:
         )
 
         # Compute new environment state and observation
-        env_state = EnvState(agent_position=new_agent_position, target_position=env_state.target_position, counter=env_state.counter + 1, delayed_rewards=delayed_rewards)
-        observation = get_obs(self.state_representation, self.irrelevant_features, self.grid_shape, self.observation_space, new_agent_position, env_state.target_position)
+        env_state = EnvState(
+            agent_position=new_agent_position,
+            target_position=env_state.target_position,
+            terminal_states=env_state.terminal_states,
+            delayed_rewards=delayed_rewards,
+            counter=env_state.counter + 1, 
+        )
+
+        observation = get_obs(
+            self.state_representation,
+            self.irrelevant_features,
+            self.grid_shape,
+            self.observation_space,
+            env_state,
+        )
 
         return env_state, (observation, reward, done, {})
 
     # Reset the environment before each episode
     def reset(self, rng: jax.random.PRNGKey):
-
-        # Draw random agent location
-        rng, key_agent_x, key_agent_y = jax.random.split(rng, 3)
-        agent_position = jnp.stack([
-            jax.random.randint(key_agent_x, (), 0, self.grid_shape[0]),
-            jax.random.randint(key_agent_y, (), 0, self.grid_shape[1]),
-        ])
-        agent_position = jnp.array(agent_position, dtype=jnp.int64)
-
-        # While loop to draw random target location until it is not equal to the agent position
-        def body_fn(state):
-            """Body function for JAX while loop. Generates possible new target location.
-
-            Args:
-                state (tuple): Key and impossible target location.
-
-            Returns:
-                tuple: Key and possible new target location.
-            """
-            key, target = state
-            key, key_x, key_y = jax.random.split(key,3)
-            target = jnp.stack([
-                jax.random.randint(key_x, (), 0, self.grid_shape[0]),
-                jax.random.randint(key_y, (), 0, self.grid_shape[1]),
-            ])
-            target = jnp.array(target, dtype=jnp.int64)
-            return key, target
-
-        def cond_fn(state):
-            """Condition function for JAX while loop. Returns true if agent location is equal to target location.
-
-            Args:
-                state (tuple): Key and possible target location.
-
-            Returns:
-                jnp.bool: True if agent location is equal to target location and new target location is required.
-            """
-            _, target = state
-            return jnp.all(target == agent_position)
         
-        state = (rng, agent_position)
-        key_final, target_position = jax.lax.while_loop(cond_fn, body_fn, state)
+        required_positions = 2 + self.number_terminal_states
+        agent_position, target_position, terminal_states = get_random_positions(
+            rng=rng, 
+            grid_shape=self.grid_shape, 
+            n=required_positions,
+        )
 
         delayed_rewards = jnp.zeros(self.reward_delay, dtype=jnp.float64)
-        env_state = EnvState(agent_position=agent_position, target_position=target_position, delayed_rewards=delayed_rewards)
+        
+        env_state = EnvState(
+            agent_position=agent_position,
+            target_position=target_position,
+            delayed_rewards=delayed_rewards, 
+            terminal_states=terminal_states, 
+            counter=1,
+        )
 
-        observation = get_obs(self.state_representation, self.irrelevant_features, self.grid_shape, self.observation_space, agent_position, target_position)
+        observation = get_obs(
+            self.state_representation, 
+            self.irrelevant_features,
+            self.grid_shape,
+            self.observation_space,
+            env_state,
+        )
 
         return env_state, observation
 

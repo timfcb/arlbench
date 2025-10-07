@@ -3,7 +3,7 @@ import gymnax.environments.spaces
 import jax
 import jax.numpy as jnp
 from typing import Tuple
-import matplotlib.pyplot as plt
+from typing import TYPE_CHECKING, Any
 
 ### Spaces for the RL Toy Environment ### 
 
@@ -37,9 +37,8 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         super(ImageContinuous, self).__init__(
             shape=(self.width, self.height, self.num_channels), dtype=jnp.uint8, low=0, high=255
         )
-
     
-    def generate_image(self, agent_position: jax.Array, target_position: jax.Array, irrelevant_features: bool, grid_shape: Tuple[int,int]) -> jax.Array:
+    def generate_image(self, env_state:Any, irrelevant_features: bool, grid_shape: Tuple[int,int]) -> jax.Array:
         """Returns the hyperparameter configuration space of the algorithm.
 
         Args:
@@ -49,6 +48,12 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         Returns:
             jnp.ndarry: greyscaled image of the environment with shape [84, 84, 1].
         """
+
+        agent_position = env_state.agent_position
+        target_position = env_state.target_position
+        terminal_states = env_state.terminal_states
+
+
         cols, rows = grid_shape
 
         if irrelevant_features:
@@ -59,10 +64,12 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         grid_thickness = 1
         # black
         line_colour = (0, 0, 0)
-        # red
-        agent_colour = (255, 0, 0)
-        # light yellow
-        target_colour = (255, 255, 128)
+        # green
+        agent_colour = (0, 255, 0)
+        # yellow
+        target_colour = (255, 255, 0)
+        # dark blue
+        terminal_state_colour = (0,0,128)
 
         # White img with 84x84 pixels
         img = jnp.full((84, 84, 3), 255, dtype=jnp.uint8)
@@ -107,6 +114,10 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         # Draw target and agent squares centered in their cells
         img = draw_square_centered(img, target_position, target_colour)
         img = draw_square_centered(img, agent_position, agent_colour)
+
+        if len(terminal_states[0]):
+            for ind, elem in enumerate(terminal_states):
+                img = draw_square_centered(img, elem, terminal_state_colour)
 
         # Draw vertical grid lines
         for i in range(cols + 1):
