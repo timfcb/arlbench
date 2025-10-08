@@ -12,6 +12,7 @@ from flax import struct
 
 from ..autorl_env import Environment
 from .utils import get_obs, compute_reward, init_obs_space, get_random_positions
+from .data_classes import EnvState, RewardShape
 
 if TYPE_CHECKING:
     from chex import PRNGKey
@@ -23,16 +24,6 @@ jax.config.update("jax_enable_x64", True)
 # Term state testing
 # Done flag testing
 # Reward state with struct dataclass -> for readability
-
-#Dataclass for defining Environment States
-@struct.dataclass
-class EnvState():
-    """Environment state for MDP Playground."""
-    agent_position: jnp.ndarray
-    target_position: jnp.ndarray
-    terminal_states: jnp.ndarray = jnp.array([], dtype=jnp.int64)
-    delayed_rewards: jnp.ndarray = jnp.array([], dtype=jnp.float64)
-    counter: int = 1
  
 ### Start of the MDP Playground ###
 class GridEnv:
@@ -65,42 +56,6 @@ class GridEnv:
         else:
             self.transition_noise = 0.0
 
-        if 'reward_scale' in config:
-            self.reward_scale = config['reward_scale']
-        else:
-            self.reward_scale = 1.0
-
-        if 'reward_probability' in config:
-            self.reward_probability = config['reward_probability']
-        else:
-            self.reward_probability = 1.0
-
-        if 'reward_shift' in config:
-            self.reward_shift = config['reward_shift']
-        else:
-            self.reward_shift = 0.0
-
-        if 'dense_reward' in config:
-            self.dense_reward = config['dense_reward']
-        else:
-            self.dense_reward = False
-
-        if 'reward_delay' in config:
-            self.reward_delay = config['reward_delay']
-        else:
-            self.reward_delay = 0
-
-        if 'reward_noise' in config:
-            self.reward_noise_std = config['reward_noise']
-        else:
-            self.reward_noise_std = 0.0
-
-        # TODO: Implement
-        if 'reward_every_n_steps' in config:
-            self.reward_every_n_steps = config['reward_every_n_steps']
-        else:
-            self.reward_every_n_steps = 1
-
         if 'number_terminal_states' in config:
             self.number_terminal_states = config['number_terminal_states']
         else:
@@ -110,6 +65,53 @@ class GridEnv:
             self.irrelevant_features = config['irrelevant_features']
         else:
             self.irrelevant_features = False
+
+        # Specification of reward shape
+        if 'reward_scaling' in config:
+            reward_scaling = config['reward_scaling']
+        else:
+            reward_scaling = 1.0
+
+        if 'reward_probability' in config:
+            reward_probability = config['reward_probability']
+        else:
+            reward_probability = 1.0
+
+        if 'reward_shift' in config:
+            reward_shift = config['reward_shift']
+        else:
+            reward_shift = 0.0
+
+        if 'dense_reward' in config:
+            dense_reward = config['dense_reward']
+        else:
+            dense_reward = False
+
+        if 'reward_delay' in config:
+            reward_delay = config['reward_delay']
+        else:
+            reward_delay = 0
+
+        if 'reward_noise' in config:
+            reward_noise_std = config['reward_noise']
+        else:
+            reward_noise_std = 0.0
+
+        # TODO Implement
+        if 'reward_every_n_steps' in config:
+            reward_every_n_steps = config['reward_every_n_steps']
+        else:
+            reward_every_n_steps = 1
+
+        self.reward_shape = RewardShape(
+            delay=reward_delay,
+            noise=reward_noise_std,
+            scaling_factor=reward_scaling,
+            shift=reward_shift,
+            every_n_steps=reward_every_n_steps,
+            dense=dense_reward,
+            probability=reward_probability,
+        )
 
         '''Initializing the Environment Spaces'''
 
@@ -125,9 +127,19 @@ class GridEnv:
 
         self._observation_space = init_obs_space(self.state_representation, self.irrelevant_features, self.grid_shape, self.number_terminal_states)
 
+    @functools.partial(jax.jit, static_argnums=0)
     def step(self, env_state: Any, action: Any, rng: PRNGKey):
-        """Steps the environment forward by one step."""
+        """Step function of a single grid environment
+        
+            Functionality
+            -------------
+            - Application of transition noise to the sampled action by the agent and moving the agent based on action
+            - Check whether the episode has ended through the action; Possible reasons: terminated, truncated, reached terminal state
+            - Compute reward signal for this transition
+            - Compute new environment state
+            - Compute observation for given obs shape (vector, matrix, image)
 
+        """
         # Compute new agent position based on action
         rng, rng_noise, rng_action = jax.random.split(rng, 3)
         prob_noise = jax.random.uniform(rng_noise) 
@@ -151,12 +163,7 @@ class GridEnv:
             env_state,
             new_agent_position,
             terminated,
-            self.dense_reward,
-            self.reward_scale,
-            self.reward_shift,
-            self.reward_probability,
-            self.reward_delay,
-            self.reward_noise_std
+            self.reward_shape
         )
 
         # Compute new environment state and observation
@@ -180,7 +187,17 @@ class GridEnv:
 
     # Reset the environment before each episode
     def reset(self, rng: jax.random.PRNGKey):
+        """
+        Reset function of a single grid environment
+
+            Functionality
+            -------------
+            - Randomly generates new positions for agent, target and terminal states for new episode
+            - Init array for delayed rewards (needs to be stored in env_state)
+            - Init new env_state
+            - Compute observation for current state based on representation (vector, matrix, image)
         
+        """
         required_positions = 2 + self.number_terminal_states
         agent_position, target_position, terminal_states = get_random_positions(
             rng=rng, 
@@ -188,7 +205,7 @@ class GridEnv:
             n=required_positions,
         )
 
-        delayed_rewards = jnp.zeros(self.reward_delay, dtype=jnp.float64)
+        delayed_rewards = jnp.zeros(self.reward_shape.delay, dtype=jnp.float64)
         
         env_state = EnvState(
             agent_position=agent_position,

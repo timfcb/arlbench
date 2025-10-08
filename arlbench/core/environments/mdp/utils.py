@@ -5,6 +5,7 @@ from jax.random import PRNGKey
 from typing import TYPE_CHECKING, Any, Tuple
 
 from .spaces import BoxExtended, ImageContinuous
+from .data_classes import RewardShape
 
 # Greyscaling used in Atari preprocessing (https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
@@ -70,12 +71,20 @@ def get_obs(state_representation: str, irrelevant_features: bool, grid_shape: Tu
     
     return observation
 
-def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, dense_reward: bool, reward_scale: float, reward_shift: float, reward_probability: float, reward_delay: int, reward_noise_std:float):
-    
+def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, reward_shape: RewardShape):
+
+    delay = reward_shape.delay
+    noise = reward_shape.noise
+    scaling_factor = reward_shape.scaling_factor
+    shift = reward_shape.shift
+    every_n_steps = reward_shape.every_n_steps
+    dense = reward_shape.dense
+    probability = reward_shape.probability
+
     reward = jnp.float64(0.0)
 
     # Environment property: Dense vs Sparse reward
-    if dense_reward:
+    if dense:
         # Dense reward: Reward is given for every step (change in manhattan distance to target)
         manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
         manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
@@ -85,31 +94,31 @@ def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray
         reward = jnp.where(terminated, 1.0, 0.0)
 
     # Environment property: Reward scaling
-    reward = reward * reward_scale
+    reward *= scaling_factor
 
     # Environment property: Reward shift
-    reward = reward + reward_shift
+    reward += shift
 
     # Environment property: Reward noise
     rng, rng_noise = jax.random.split(rng)
-    noise = jax.random.normal(rng_noise) * reward_noise_std
-    reward = reward + noise
+    computed_noise = jax.random.normal(rng_noise) * noise
+    reward += computed_noise
 
     # Environment property: Reward probability
     rng, rng_reward = jax.random.split(rng)
     rand_value = jax.random.uniform(rng_reward)
     reward = jax.lax.cond(
-        rand_value < reward_probability,
+        rand_value < probability,
         lambda _: reward,
         lambda _: jnp.float64(0.0),
         operand=None
     )
     
     # Environment property: Reward delay
-    if reward_delay > 1:
+    if delay > 1:
         returned_reward = env_state.delayed_rewards[0]
         delayed_rewards = jnp.append(env_state.delayed_rewards[1:], reward)
-    elif reward_delay == 1:
+    elif delay == 1:
         returned_reward = env_state.delayed_rewards[0]
         delayed_rewards = jnp.array([reward])
     else: # reward delay == 0

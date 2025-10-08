@@ -12,5 +12,5 @@ Adjustable Dimensions of Hardness with their corresponding Value Ranges
     - Shift                             0-5
     - Probability                       0.0-0.5
     - Dense (Sparse)                    True/False
-    - Max Step Number in Episode        15-50
+- Max Step Number in Episode        15-50
 
