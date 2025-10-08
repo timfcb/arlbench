@@ -15,4 +15,4 @@
 | Reward Density | True/False |
 
 
-Implementation of MDP Playground inspired by [MDP Playground](https://github.com/automl/mdp-playground/blob/master/mdp_playground/envs/rl_toy_env.py). Detailed explanations of the Properties of the Environment can be found here: [MDP Playground Paper](https://arxiv.org/pdf/1909.07750) by Rajan et al.
+Implementation of our version of MDP Playground inspired by Toy Environment of [MDP Playground](https://github.com/automl/mdp-playground/blob/master/mdp_playground/envs/rl_toy_env.py). Step/Reset function of our MDP Playground environment fully built up in JAX. More information about JAX here: [JAX](https://github.com/jax-ml/jax). Detailed explanations of the Properties of the Environment can be found here: [MDP Playground Paper](https://arxiv.org/pdf/1909.07750) by Rajan et al.

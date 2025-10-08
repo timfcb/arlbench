@@ -145,7 +145,7 @@ def init_obs_space(state_representation: str, irrelevant_features: bool, grid_sh
 
         observation_space = BoxExtended(
             jnp.array(jnp.zeros(obs_space_dimension, dtype=jnp.int64)),
-            jnp.array([(grid_shape[0]) for _ in range(obs_space_dimension)], dtype=jnp.int64),
+            jnp.array([(grid_shape[0]-1) for _ in range(obs_space_dimension)], dtype=jnp.int64),
             (obs_space_dimension,),
             dtype=jnp.int64
         )

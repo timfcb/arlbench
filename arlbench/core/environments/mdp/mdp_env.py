@@ -19,11 +19,6 @@ if TYPE_CHECKING:
 
 # Found on Stack Overflow (only needed for Windows)
 jax.config.update("jax_enable_x64", True)
-
-# TODO #
-# Term state testing
-# Done flag testing
-# Reward state with struct dataclass -> for readability
  
 ### Start of the MDP Playground ###
 class GridEnv:

@@ -1,22 +1,22 @@
-name: "Mdp-2x2_Terminal"
+name: "Mdp-4x4_TestTerminal"
 framework: "mdp"
 n_total_timesteps: 100
 kwargs:
   seed: 1
-  grid_shape: [4, 4]
+  grid_shape: [3, 3]
   reward_function: move_to_a_point
   dense_reward: True
-  state_representation: vector
+  state_representation: matrix
   irrelevant_features: False
-  number_terminal_states: 4
+  number_terminal_states: 2
 eval_kwargs:
   seed: 1
-  grid_shape: [4, 4]
+  grid_shape: [3, 3]
   reward_function: move_to_a_point
   dense_reward: False
-  state_representation: vector
+  state_representation: matrix
   irrelevant_features: False
-  number_terminal_states: 4
+  number_terminal_states: 2
 cnn_policy: True
 deterministic_eval: True
 jax_enable_x64: True
