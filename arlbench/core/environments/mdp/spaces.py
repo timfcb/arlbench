@@ -6,7 +6,7 @@ from typing import Tuple
 from typing import TYPE_CHECKING, Any
 
 ### Spaces for the RL Toy Environment ### 
-
+# Used for Vector and Matrix Representation
 class BoxExtended(gymnax.environments.spaces.Box):
     def __init__(self, low, high, shape=None, dtype=jnp.int64, seed=None):
 
@@ -19,6 +19,7 @@ class BoxExtended(gymnax.environments.spaces.Box):
     def sample(self, key: jax.random.PRNGKey) -> jax.Array:
         return jax.random.randint(key=key, shape=self.shape, minval=self.low, maxval=self.high, dtype=self.dtype)
 
+# Used for Image Representation 
 class ImageContinuous(gymnax.environments.spaces.Box):
     """A space that maps the current position of the agent and target to an image representation of the environment.
 
@@ -38,7 +39,7 @@ class ImageContinuous(gymnax.environments.spaces.Box):
             shape=(self.width, self.height, self.num_channels), dtype=jnp.uint8, low=0, high=255
         )
     
-    def generate_image(self, env_state:Any, irrelevant_features: bool, grid_shape: Tuple[int,int]) -> jax.Array:
+    def generate_image(self, env_state:Any, grid_shape: Tuple[int,int]) -> jax.Array:
         """Returns the hyperparameter configuration space of the algorithm.
 
         Args:
@@ -53,11 +54,7 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         target_position = env_state.target_position
         terminal_states = env_state.terminal_states
 
-
         cols, rows = grid_shape
-
-        if irrelevant_features:
-            cols, rows = cols * 2, rows * 2
 
         final_size = 84
         square_ratio = 1

@@ -56,11 +56,6 @@ class GridEnv:
         else:
             self.number_terminal_states = 0
 
-        if 'irrelevant_features' in config:
-            self.irrelevant_features = config['irrelevant_features']
-        else:
-            self.irrelevant_features = False
-
         # Specification of reward shape
         if 'reward_scaling' in config:
             reward_scaling = config['reward_scaling']
@@ -120,7 +115,7 @@ class GridEnv:
             [0, 1],   # 3: Move up (positive y)
         ])
 
-        self._observation_space = init_obs_space(self.state_representation, self.irrelevant_features, self.grid_shape, self.number_terminal_states)
+        self._observation_space = init_obs_space(self.state_representation, self.grid_shape, self.number_terminal_states)
 
     @functools.partial(jax.jit, static_argnums=0)
     def step(self, env_state: Any, action: Any, rng: PRNGKey):
@@ -172,7 +167,6 @@ class GridEnv:
 
         observation = get_obs(
             self.state_representation,
-            self.irrelevant_features,
             self.grid_shape,
             self.observation_space,
             env_state,
@@ -212,7 +206,6 @@ class GridEnv:
 
         observation = get_obs(
             self.state_representation, 
-            self.irrelevant_features,
             self.grid_shape,
             self.observation_space,
             env_state,
@@ -277,5 +270,3 @@ class MdpPlaygroundEnv(Environment):
         """Observation space of the environment."""
         return self._env.observation_space
     
-
- 

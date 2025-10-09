@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Tuple
 from .spaces import BoxExtended, ImageContinuous
 from .data_classes import RewardShape
 
+# File for all helper functions, TODO more sturcture
+
 # Greyscaling used in Atari preprocessing (https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
     """Converts an RGB image to greyscale by extracting the Y channel.
@@ -23,12 +25,11 @@ def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
     greyscale_image = jnp.expand_dims(greyscale_image, axis=-1)
     return greyscale_image
 
-def get_obs(state_representation: str, irrelevant_features: bool, grid_shape: Tuple[int, int], observation_space: Any, env_state:Any) -> Any:
+def get_obs(state_representation: str, grid_shape: Tuple[int, int], observation_space: Any, env_state:Any) -> Any:
     """Computes the observation based on the state representation (image, vector, matrix).
 
     Args:
         state_representation (str): State representation type ('image', 'vector', 'matrix').
-        irrelevant_features (bool): Whether to include irrelevant features in the observation.
         grid_shape (Tuple[int, int]): Shape of the grid world (width, height).
         env_state
 
@@ -41,18 +42,13 @@ def get_obs(state_representation: str, irrelevant_features: bool, grid_shape: Tu
 
     # Image returns a greyscaled image
     if state_representation == 'image':
-        rgb_image = observation_space.generate_image(env_state, irrelevant_features, grid_shape)
+        rgb_image = observation_space.generate_image(env_state, grid_shape)
         observation = rgb_to_greyscale(rgb_image)
     # Vector returns a 4 dimensional vector with agent and target positions
     elif state_representation == 'vector':
-        if irrelevant_features:
-            observation = jnp.concatenate([agent_position, target_position, terminal_states.flatten(), agent_position, target_position, terminal_states.flatten()])
-        else:
-            observation = jnp.concatenate([agent_position, target_position, terminal_states.flatten()])
+        observation = jnp.concatenate([agent_position, target_position, terminal_states.flatten()])
     # Matrix returns a matrix with 0 for empty cells, 1 for agent position and 2 for target position
     elif state_representation == 'matrix':
-        if irrelevant_features:
-            grid_shape = tuple(x * 2 for x in grid_shape)
 
         grid_matrix = jnp.zeros(grid_shape, dtype=jnp.int64)
         # Set agent position to 1 and target position to 2 (flip x/y coordinates for correct orientation)
@@ -130,18 +126,14 @@ def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray
     return returned_reward, delayed_rewards
 
 # Terminal states integrated, TODO: Irrelevant features
-def init_obs_space(state_representation: str, irrelevant_features: bool, grid_shape: Tuple[int, int], number_terminal_states: int) -> Any:
+def init_obs_space(state_representation: str, grid_shape: Tuple[int, int], number_terminal_states: int) -> Any:
     # Initializing the observation space (RGB image or agent position as array)
     observation_space = None
-    if irrelevant_features:
-        irrelevant_factor = 2
-    else:
-        irrelevant_factor = 1
 
     if state_representation == 'vector':
 
         # 2 coordinates for agent position, 2 coordinates for target position, 2 coordinates for each terminal state, double dimension if irrelevant features 
-        obs_space_dimension = (2 + 2 + 2*number_terminal_states) * irrelevant_factor
+        obs_space_dimension = (2 + 2 + 2*number_terminal_states)
 
         observation_space = BoxExtended(
             jnp.array(jnp.zeros(obs_space_dimension, dtype=jnp.int64)),
@@ -152,8 +144,8 @@ def init_obs_space(state_representation: str, irrelevant_features: bool, grid_sh
 
     elif state_representation == 'matrix':
 
-        height = grid_shape[1]*irrelevant_factor
-        width = grid_shape[0]*irrelevant_factor
+        height = grid_shape[1]
+        width = grid_shape[0]
 
         observation_space = BoxExtended(
             low=0,
@@ -172,8 +164,28 @@ def init_obs_space(state_representation: str, irrelevant_features: bool, grid_sh
 
     return observation_space
 
+# Randomly draw n positions in the grid
+def get_random_positions(rng: jax.random.PRNGKey, grid_shape: Tuple[int,int], n: int):
 
-def random_position(grid_shape, occupied_cells, rng, insert_idx):
+    number_cells = grid_shape[0] * grid_shape[1]
+
+    indices = jax.random.choice(rng, a=number_cells, shape=(n,), replace=False)
+
+    # Mapping of indices to cells by using divmod [quotient, remainder]
+    grid_dim = jnp.full(len(indices),grid_shape[0], dtype=jnp.int64)
+    fract_div = jnp.divmod(indices, grid_dim)
+
+    x_coords, y_coords = fract_div
+    x_coords = jnp.expand_dims(x_coords, axis=1)
+    y_coords = jnp.expand_dims(y_coords, axis=1)
+
+    grid_positions = jnp.concatenate([x_coords, y_coords], axis=1)
+
+    return grid_positions[0], grid_positions[1], grid_positions[2:]
+
+#### Old Implementation of drawing randomly positions in the grid, Works completely fine but could be done faster###
+'''
+def random_position(grid_shape: Tuple[int,int], occupied_cells: jnp.ndarray, rng: PRNGKey, insert_idx: int):
 
     # Draw random target location unequal to agent location
     def body_fn(state):
@@ -230,3 +242,4 @@ def get_random_positions(rng: PRNGKey, grid_shape: Tuple[int,int], n: int):
     key_final, n, occupied_cells, generated_positions, insert_idx = jax.lax.while_loop(cond_fn, body_fn, state)
 
     return generated_positions[0], generated_positions[1], generated_positions[2:]
+'''
