@@ -20,5 +20,4 @@ class RewardShape():
     scaling_factor: float = 0.0
     shift: float = 0.0
     every_n_steps: int = 1
-    dense: bool = True
     probability: float = 1.0

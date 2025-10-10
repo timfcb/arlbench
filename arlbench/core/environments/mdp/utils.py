@@ -74,20 +74,14 @@ def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray
     scaling_factor = reward_shape.scaling_factor
     shift = reward_shape.shift
     every_n_steps = reward_shape.every_n_steps
-    dense = reward_shape.dense
     probability = reward_shape.probability
 
     reward = jnp.float64(0.0)
 
-    # Environment property: Dense vs Sparse reward
-    if dense:
-        # Dense reward: Reward is given for every step (change in manhattan distance to target)
-        manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
-        manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
-        reward = manhat_dist_old - manhat_dist_new
-    else:
-        # Sparse reward: Reward is only given when target is reached
-        reward = jnp.where(terminated, 1.0, 0.0)
+    # Dense reward: Reward is given for every step (change in manhattan distance to target)
+    manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
+    manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
+    reward = manhat_dist_old - manhat_dist_new
 
     # Environment property: Reward scaling
     reward *= scaling_factor
@@ -171,7 +165,7 @@ def get_random_positions(rng: jax.random.PRNGKey, grid_shape: Tuple[int,int], n:
 
     indices = jax.random.choice(rng, a=number_cells, shape=(n,), replace=False)
 
-    # Mapping of indices to cells by using divmod [quotient, remainder]
+    # Mapping of indices to cells by using divmod [quotient, remainder] ### Only works for quadratic grids
     grid_dim = jnp.full(len(indices),grid_shape[0], dtype=jnp.int64)
     fract_div = jnp.divmod(indices, grid_dim)
 
@@ -182,6 +176,7 @@ def get_random_positions(rng: jax.random.PRNGKey, grid_shape: Tuple[int,int], n:
     grid_positions = jnp.concatenate([x_coords, y_coords], axis=1)
 
     return grid_positions[0], grid_positions[1], grid_positions[2:]
+
 
 #### Old Implementation of drawing randomly positions in the grid, Works completely fine but could be done faster###
 '''

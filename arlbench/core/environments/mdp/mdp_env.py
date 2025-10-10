@@ -72,11 +72,6 @@ class GridEnv:
         else:
             reward_shift = 0.0
 
-        if 'dense_reward' in config:
-            dense_reward = config['dense_reward']
-        else:
-            dense_reward = False
-
         if 'reward_delay' in config:
             reward_delay = config['reward_delay']
         else:
@@ -99,7 +94,6 @@ class GridEnv:
             scaling_factor=reward_scaling,
             shift=reward_shift,
             every_n_steps=reward_every_n_steps,
-            dense=dense_reward,
             probability=reward_probability,
         )
 
