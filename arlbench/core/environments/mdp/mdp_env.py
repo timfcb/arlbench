@@ -11,7 +11,6 @@ import jax.numpy as jnp
 from flax import struct
 
 from ..autorl_env import Environment
-from .utils.utils import get_obs, compute_reward, init_obs_space, get_random_positions
 from .data_classes import EnvState, RewardShape
 from .wrappers import AutoResetWrapper
 from .grid_env import GridEnv

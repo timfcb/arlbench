@@ -10,7 +10,9 @@ import jax
 import jax.numpy as jnp
 from flax import struct
 
-from .utils.utils import get_obs, reward_function, init_obs_space, get_random_positions
+from .utils.utils import get_random_positions
+from .utils.observation import get_obs, init_obs_space
+from .utils.reward import reward_function
 from .data_classes import EnvState, RewardShape
 
 if TYPE_CHECKING:
