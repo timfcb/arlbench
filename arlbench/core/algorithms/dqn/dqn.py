@@ -487,7 +487,6 @@ class DQN(Algorithm):
                 n_update_steps,
             )
             eval_returns = self.eval(runner_state, n_eval_episodes)
-
             return (runner_state, buffer_state), DQNTrainingResult(
                 eval_rewards=eval_returns, trajectories=trajectories, metrics=metrics
             )

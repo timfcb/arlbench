@@ -1,20 +1,24 @@
 name: "Mdp-2x2_Terminal"
 framework: "mdp"
-n_total_timesteps: 100
+n_total_timesteps: 1000
 kwargs:
   seed: 1
-  grid_shape: [4, 4]
+  grid_shape: [6, 6]
   reward_function: move_to_a_point
   state_representation: vector
-  irrelevant_features: False
-  number_terminal_states: 4
+  number_terminal_states: 2
+  max_steps_in_episode: 15
+  reward_delay_prob: 0.5
+  is_eval: False
 eval_kwargs:
   seed: 1
-  grid_shape: [4, 4]
+  grid_shape: [6, 6]
   reward_function: move_to_a_point
   state_representation: vector
-  irrelevant_features: False
-  number_terminal_states: 4
+  number_terminal_states: 2
+  max_steps_in_episode: 15
+  reward_delay_prob: 0.5
+  is_eval: True
 cnn_policy: False
 deterministic_eval: True
 jax_enable_x64: True

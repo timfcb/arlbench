@@ -283,7 +283,6 @@ class Algorithm(ABC):
         """
         # Number of parallel evaluations, each with n_envs environments
         n_evals = int(np.ceil(num_eval_episodes / self.eval_env.n_envs))
-
         _, rewards = jax.lax.scan(
             self._env_episode, (runner_state.rng, runner_state), None, n_evals
         )

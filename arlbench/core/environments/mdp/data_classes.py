@@ -15,7 +15,7 @@ class EnvState():
 @struct.dataclass
 class RewardShape():
     """Reward Structure for MDP Playground"""
-    delay: int = 0
+    delay_prob: float = 1.0
     noise: float = 0.0
     scaling_factor: float = 0.0
     shift: float = 0.0

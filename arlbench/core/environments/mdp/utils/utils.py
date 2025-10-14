@@ -4,8 +4,8 @@ from jax.random import PRNGKey
 
 from typing import TYPE_CHECKING, Any, Tuple
 
-from .spaces import BoxExtended, ImageContinuous
-from .data_classes import RewardShape
+from ..spaces import BoxExtended, ImageContinuous
+from ..data_classes import RewardShape
 
 # File for all helper functions, TODO more sturcture
 
@@ -25,7 +25,7 @@ def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
     greyscale_image = jnp.expand_dims(greyscale_image, axis=-1)
     return greyscale_image
 
-def get_obs(state_representation: str, grid_shape: Tuple[int, int], observation_space: Any, env_state:Any) -> Any:
+def get_obs(state_representation: str, number_terminal_states: int, grid_shape: Tuple[int, int], observation_space: Any, env_state:Any) -> Any:
     """Computes the observation based on the state representation (image, vector, matrix).
 
     Args:
@@ -50,31 +50,47 @@ def get_obs(state_representation: str, grid_shape: Tuple[int, int], observation_
     # Matrix returns a matrix with 0 for empty cells, 1 for agent position and 2 for target position
     elif state_representation == 'matrix':
 
-        grid_matrix = jnp.zeros(grid_shape, dtype=jnp.int64)
-        # Set agent position to 1 and target position to 2 (flip x/y coordinates for correct orientation)
-        grid_matrix = grid_matrix.at[agent_position[1], agent_position[0]].set(1).at[target_position[1], target_position[0]].set(2)
+        grid_matrix_agent = jnp.zeros(grid_shape, dtype=jnp.int64).at[agent_position[1], agent_position[0]].set(1)
+        grid_matrix_target = jnp.zeros(grid_shape, dtype=jnp.int64).at[target_position[1], target_position[0]].set(1)
+        grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target], axis=2)
 
-        # number terminal states not 0
-        if len(terminal_states[0]):
+        if number_terminal_states:
             # Separate rows (y) and columns (x)
+            grid_matrix_terminal = jnp.zeros(grid_shape, dtype=jnp.int64)
             xs, ys = terminal_states[:, 0], terminal_states[:, 1]
-            grid_matrix = grid_matrix.at[ys, xs].set(3)
+            grid_matrix_terminal = grid_matrix_terminal.at[ys, xs].set(1)
+            grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target, grid_matrix_terminal], axis=2)
 
-        observation = jnp.expand_dims(grid_matrix, axis=-1)
+        observation = grid_matrix
 
     else:
         raise ValueError(f"Unknown state representation: {state_representation}. Supported are 'image', 'vector', and 'matrix'.")
     
     return observation
 
-def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, reward_shape: RewardShape):
+def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_prob: jnp.float64, max_steps: int, delayed_rewards: jnp.ndarray):
 
-    delay = reward_shape.delay
+    updated_delayed_rewards = jnp.concatenate([jnp.array([reward]), delayed_rewards[:-1]])
+
+    rng, key = jax.random.split(rng)
+    rand_values = jax.random.uniform(key, shape=(max_steps,))
+    delay_threshold = jnp.full(shape=(max_steps, ), fill_value=delay_prob, dtype=jnp.float64)
+
+    index_mask = jnp.where(rand_values < delay_threshold, False, True)
+
+    reward_in_step = jnp.sum(jnp.where(index_mask==True, updated_delayed_rewards, jnp.float64(0.0)))
+    remaining_rewards = jnp.where(index_mask==False, updated_delayed_rewards, jnp.float64(0.0))
+
+    return reward_in_step, remaining_rewards
+
+def compute_reward(reward_state):
+
+    rng, env_state, new_agent_position, reward_shape = reward_state
     noise = reward_shape.noise
     scaling_factor = reward_shape.scaling_factor
     shift = reward_shape.shift
-    every_n_steps = reward_shape.every_n_steps
-    probability = reward_shape.probability
+    delay_prob = reward_shape.delay_prob
+    max_steps = len(env_state.delayed_rewards)
 
     reward = jnp.float64(0.0)
 
@@ -94,39 +110,35 @@ def compute_reward(rng: PRNGKey, env_state: Any, new_agent_position: jnp.ndarray
     computed_noise = jax.random.normal(rng_noise) * noise
     reward += computed_noise
 
-    # Environment property: Reward probability
-    rng, rng_reward = jax.random.split(rng)
-    rand_value = jax.random.uniform(rng_reward)
-    reward = jax.lax.cond(
-        rand_value < probability,
-        lambda _: reward,
-        lambda _: jnp.float64(0.0),
-        operand=None
+    reward_in_step, delayed_rewards = compute_delayed_rewards(rng, reward, delay_prob, max_steps, env_state.delayed_rewards)
+    
+    return reward_in_step, delayed_rewards
+
+# 
+def reward_function(rng: jax.random.PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: bool, reward_shape: Any):
+
+    # Reward Probability
+    rng, rng_prob = jax.random.split(rng)
+    random_value = jax.random.uniform(rng_prob)
+    rng, rng_compute = jax.random.split(rng)
+    reward_state = (rng_compute, env_state, new_agent_position, reward_shape)
+    reward_in_step, delayed_rewards = jax.lax.cond(
+        random_value < reward_shape.probability,
+        lambda reward_state: compute_reward(reward_state),
+        lambda _: (jnp.float64(0.0), jnp.concatenate([jnp.array([0.0]), env_state.delayed_rewards[:-1]])),
+        operand=reward_state
     )
-    
-    # Environment property: Reward delay
-    if delay > 1:
-        returned_reward = env_state.delayed_rewards[0]
-        delayed_rewards = jnp.append(env_state.delayed_rewards[1:], reward)
-    elif delay == 1:
-        returned_reward = env_state.delayed_rewards[0]
-        delayed_rewards = jnp.array([reward])
-    else: # reward delay == 0
-        delayed_rewards = jnp.array([])
-        returned_reward = reward
 
-    # TODO Discuss with Julian: What happens at beginning/end of episode with delayed rewards?
-    
-    return returned_reward, delayed_rewards
+    return reward_in_step, delayed_rewards
 
-# Terminal states integrated, TODO: Irrelevant features
+# Init Observation Space
 def init_obs_space(state_representation: str, grid_shape: Tuple[int, int], number_terminal_states: int) -> Any:
     # Initializing the observation space (RGB image or agent position as array)
     observation_space = None
 
     if state_representation == 'vector':
 
-        # 2 coordinates for agent position, 2 coordinates for target position, 2 coordinates for each terminal state, double dimension if irrelevant features 
+        # 2 coordinates for agent position, 2 coordinates for target position, 2 coordinates for each terminal state 
         obs_space_dimension = (2 + 2 + 2*number_terminal_states)
 
         observation_space = BoxExtended(
