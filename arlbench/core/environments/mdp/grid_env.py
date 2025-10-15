@@ -147,7 +147,6 @@ class GridEnv:
             rng,
             env_state,
             new_agent_position,
-            terminated,
             self.reward_shape
         )
 
@@ -185,25 +184,21 @@ class GridEnv:
             Functionality
             -------------
             - Randomly generates new positions for agent, target and terminal states for new episode
-            - Init array for delayed rewards (needs to be stored in env_state)
             - Init new env_state
             - Compute observation for current state based on representation (vector, matrix, image)
         
         """
-        required_positions = 2 + self.number_terminal_states
         agent_position, target_position, terminal_states = get_random_positions(
             rng=rng, 
             grid_shape=self.grid_shape, 
-            n=required_positions,
+            n=(2 + self.number_terminal_states),
         )
-
-        delayed_rewards = jnp.zeros(self.max_steps_in_episode, dtype=jnp.float64)
         
         env_state = EnvState(
             agent_position=agent_position,
             target_position=target_position, 
             terminal_states=terminal_states,
-            delayed_rewards = delayed_rewards,
+            delayed_rewards = jnp.zeros(self.max_steps_in_episode, dtype=jnp.float64),
             counter=1,
         )
 

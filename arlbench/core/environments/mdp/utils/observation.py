@@ -22,6 +22,7 @@ def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
     greyscale_image = jnp.expand_dims(greyscale_image, axis=-1)
     return greyscale_image
 
+
 def get_obs(state_representation: str, number_terminal_states: int, grid_shape: Tuple[int, int], observation_space: Any, env_state:Any) -> Any:
     """Computes the observation based on the state representation (image, vector, matrix).
 
@@ -49,7 +50,6 @@ def get_obs(state_representation: str, number_terminal_states: int, grid_shape: 
 
         grid_matrix_agent = jnp.zeros(grid_shape, dtype=jnp.int64).at[agent_position[1], agent_position[0]].set(1)
         grid_matrix_target = jnp.zeros(grid_shape, dtype=jnp.int64).at[target_position[1], target_position[0]].set(1)
-        grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target], axis=2)
 
         if number_terminal_states:
             # Separate rows (y) and columns (x)
@@ -57,6 +57,8 @@ def get_obs(state_representation: str, number_terminal_states: int, grid_shape: 
             xs, ys = terminal_states[:, 0], terminal_states[:, 1]
             grid_matrix_terminal = grid_matrix_terminal.at[ys, xs].set(1)
             grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target, grid_matrix_terminal], axis=2)
+        else:
+            grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target], axis=2)
 
         observation = grid_matrix
 
@@ -65,11 +67,18 @@ def get_obs(state_representation: str, number_terminal_states: int, grid_shape: 
     
     return observation
 
-# Init Observation Space
-def init_obs_space(state_representation: str, grid_shape: Tuple[int, int], number_terminal_states: int) -> Any:
-    # Initializing the observation space (RGB image or agent position as array)
-    observation_space = None
 
+def init_obs_space(state_representation: str, grid_shape: Tuple[int, int], number_terminal_states: int) -> Any:
+    """Initialization of the observation space based on selected state representation (vector, matrix, image).
+
+    Args:
+        state_representation (str): State representation type ('image', 'vector', 'matrix').
+        grid_shape (Tuple[int, int]): Shape of the grid world (width, height).
+        number_terminal_states (int): Indicates the number of terminal states in the grid
+
+    Returns:
+        Box or Image Space: Based on state representation
+    """
     if state_representation == 'vector':
 
         # 2 coordinates for agent position, 2 coordinates for target position, 2 coordinates for each terminal state 
