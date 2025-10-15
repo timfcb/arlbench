@@ -4,9 +4,6 @@ from jax.random import PRNGKey
 
 from typing import TYPE_CHECKING, Any, Tuple
 
-from ..spaces import BoxExtended, ImageContinuous
-from ..data_classes import RewardShape
-
 # Randomly draw n positions in the grid
 def get_random_positions(rng: jax.random.PRNGKey, grid_shape: Tuple[int,int], n: int):
     """Generates n random positions in the grid

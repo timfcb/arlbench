@@ -1,16 +1,15 @@
 import jax
 import jax.numpy as jnp
 from typing import TYPE_CHECKING, Any
+from arlbench.core.wrappers import Wrapper
 
 jax.config.update("jax_enable_x64", True)
 
-### In case more than one Wrapper is needed --> Abstract wrapper class like in https://github.com/dunnolab/xland-minigrid/blob/main/src/xminigrid/wrappers.py
-
-### TODO Frage an Julian: wird der Autoresetwrapper dann auch bei Eval aufgerufen?
-class AutoResetWrapper():
+# Implements abstract Wrapper class
+class AutoResetWrapper(Wrapper):
 
     def __init__(self, env:Any):
-        self._env = env
+        super().__init__(env)
 
     def __reset_after_episode(self, rng: jax.random.PRNGKey, timestep):
 
@@ -32,6 +31,3 @@ class AutoResetWrapper():
         )
 
         return timestep
-    
-    def __getattr__(self, name):
-        return getattr(self._env, name)

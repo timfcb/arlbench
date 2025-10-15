@@ -8,6 +8,13 @@ from typing import TYPE_CHECKING, Any
 ### Spaces for the RL Toy Environment ### 
 # Used for Vector and Matrix Representation
 class BoxExtended(gymnax.environments.spaces.Box):
+    """A space that maps the current position of the agent and target to a box representation of the environment.
+
+    Methods
+    -------
+    sample(self, key: jax.random.PRNGKey)
+        Generates new position inside the Box
+    """
     def __init__(self, low, high, shape=None, dtype=jnp.int64, seed=None):
 
         self.low = low
@@ -39,15 +46,19 @@ class ImageContinuous(gymnax.environments.spaces.Box):
             shape=(self.width, self.height, self.num_channels), dtype=jnp.uint8, low=0, high=255
         )
     
-    def generate_image(self, env_state:Any, grid_shape: Tuple[int,int]) -> jax.Array:
-        """Returns the hyperparameter configuration space of the algorithm.
+    def generate_image(self, env_state:Any, grid_shape: Tuple[int,int], number_terminal_states: int) -> jax.Array:
+        """Returns an array shaped (84,84,3) representing rgb-scheme of the current grid state.
+           Grid is drawn with white background and black lines
+           Agent Position is represented by filling the corresponding cell in colour green (0, 255, 0)
+           Target Position is represented by filling the corresponding cell in colour yellow (255, 255, 0)
+           Terminal States are represented by filling the corresponding cells in colour dark blue (0,0,128)
 
         Args:
-            agent_position (jax.Array): Current position of the agent in the grid world.
-            target_position (jax.Array): Current position of the target in the grid world.
+            env_state (EnvState): Current state of the env containing e.g. agent/target position
+            grid_shape (Tuple[Int, Int]): Shape of the grid environment (e.g. (5,5)).
 
         Returns:
-            jnp.ndarry: greyscaled image of the environment with shape [84, 84, 1].
+            jnp.ndarry: rgb image of the environment with shape [84, 84, 3].
         """
 
         agent_position = env_state.agent_position
@@ -67,6 +78,8 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         target_colour = (255, 255, 0)
         # dark blue
         terminal_state_colour = (0,0,128)
+        # agent reaches target
+        goal_colour = (128,128,0)
 
         # White img with 84x84 pixels
         img = jnp.full((84, 84, 3), 255, dtype=jnp.uint8)
@@ -108,11 +121,25 @@ class ImageContinuous(gymnax.environments.spaces.Box):
 
             return img
 
-        # Draw target and agent squares centered in their cells
-        img = draw_square_centered(img, target_position, target_colour)
-        img = draw_square_centered(img, agent_position, agent_colour)
+        # If AutoReset Wrapper is switched off --> if target and agent are same cell (reached target): color cell in color (128,128,0)
+        def target_not_reached(img):
+            # Draw target and agent squares centered in their cells
+            img = draw_square_centered(img, target_position, target_colour)
+            img = draw_square_centered(img, agent_position, agent_colour)
+            return img
 
-        if len(terminal_states[0]):
+        def target_reached(img):
+            img = draw_square_centered(img, agent_position, goal_colour)
+            return img
+
+        img = jax.lax.cond(
+            jnp.all(agent_position == target_position),
+            lambda img: target_reached(img),
+            lambda img: target_not_reached(img),
+            operand=img
+        )
+
+        if number_terminal_states:
             for ind, elem in enumerate(terminal_states):
                 img = draw_square_centered(img, elem, terminal_state_colour)
 

@@ -40,7 +40,7 @@ def get_obs(state_representation: str, number_terminal_states: int, grid_shape: 
 
     # Image returns a greyscaled image
     if state_representation == 'image':
-        rgb_image = observation_space.generate_image(env_state, grid_shape)
+        rgb_image = observation_space.generate_image(env_state, grid_shape, number_terminal_states)
         observation = rgb_to_greyscale(rgb_image)
     # Vector returns a 4 dimensional vector with agent and target positions
     elif state_representation == 'vector':
