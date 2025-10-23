@@ -92,12 +92,6 @@ class GridEnv:
             delay_prob=delay_prob,
         )
 
-        # Only debug purposes
-        if 'is_eval' in config:
-            self.evaluation_env = config['is_eval']
-        else:
-            self.evaluation_env = False
-
         '''Initializing the Environment Spaces'''
 
         # Initializing the action space
@@ -156,7 +150,7 @@ class GridEnv:
             target_position=env_state.target_position,
             terminal_states=env_state.terminal_states,
             delayed_rewards=delayed_rewards,
-            counter=env_state.counter + 1, 
+            counter=env_state.counter + 1,
         )
 
         observation = get_obs(

@@ -1,0 +1,31 @@
+name: "Mdp-10x10_Vector"
+framework: "mdp"
+n_total_timesteps: 1000
+kwargs:
+  seed: 1
+  grid_shape: [10, 10]
+  reward_function: move_to_a_point
+  state_representation: vector
+  max_steps_in_episode: 36
+  transition_noise: 0.0
+  frac_term_states: 0.05
+  reward_scaling: 1.0
+  reward_shift: 0.0
+  reward_noise: 0.0
+  reward_delay_prob: 0.1
+eval_kwargs:
+  seed: 1
+  grid_shape: [10, 10]
+  reward_function: move_to_a_point
+  state_representation: vector
+  max_steps_in_episode: 36
+  transition_noise: 0.1
+  frac_term_states: 0.05
+  reward_scaling: 1.0
+  reward_shift: 0.0
+  reward_noise: 0.0
+  reward_delay_prob: 0.1
+cnn_policy: False
+deterministic_eval: True
+jax_enable_x64: True
+n_envs: 1
