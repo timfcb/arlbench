@@ -1,0 +1,14 @@
+
+
+The incumbent configuration is Configuration(values={
+  'hp_config.buffer_batch_size': 16,
+  'hp_config.buffer_prio_sampling': False,
+  'hp_config.buffer_size': 9510026,
+  'hp_config.initial_epsilon': 0.9112797256804,
+  'hp_config.learning_rate': 9.7200267e-05,
+  'hp_config.learning_starts': 673,
+  'hp_config.target_epsilon': 0.0506345881702,
+  'hp_config.use_target_network': True,
+  'hp_config.target_update_interval': 516,
+  'hp_config.tau': 0.9682859109382,
+})

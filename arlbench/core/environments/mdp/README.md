@@ -15,3 +15,45 @@
 
 
 Implementation of our version of MDP Playground inspired by Toy Environment of [MDP Playground](https://github.com/automl/mdp-playground/blob/master/mdp_playground/envs/rl_toy_env.py). Step/Reset function of our MDP Playground environment fully built up in JAX. More information about JAX here: [JAX](https://github.com/jax-ml/jax). Detailed explanations of the Properties of the Environment can be found here: [MDP Playground Paper](https://arxiv.org/pdf/1909.07750) by Rajan et al.
+
+# Default Hyperparameter Configurations for Experiments
+
+
+Default hyperparameter configuration for each state representation (vector, matrix, image). The configuration is the incumbent configuration of a random search performed on one RL Grid Environment with the following properties:
+
+
+## Vector State Representation Random Search
+
+| Property       | Value |
+| --------------- | --------------- |
+| Grid Size       | 10x10  |
+| Observation Space Representations | Vector |
+| Fraction of Terminal States| 0.05 (5 Terminal States) |
+| Transition Noise    | 0.0   |
+| Maximum Number of Steps per Episode | 36 |
+| Reward Delay Probability | 0.1 |
+| Reward Noise: Standard Deviation of Normal Dist. | 0.0 |
+| Reward Scaling Factor | 1.0 |
+| Reward Shift | 0.0 |
+| Reward Probability | 1.0 |
+
+The random search using the arlbench and a training scope of 10 million timesteps yields the following best performing hyperparameter configuration:
+
+| Hyperparameter       | Value |
+| --------------- | --------------- |
+| Buffer Batch Size       | 16  |
+| Buffer Prior Sampling | False |
+| Buffer Size | 9510026 |
+| Initial Epsilon    | 0.9112797256804 |
+| Learning Rate | 9.7200267e - 05 |
+| Target Epsilon | 0.0506345881702 |
+| Use Target Network | True |
+| Target Update Interval | 516 |
+| Tau | 0.9682859109382 |
+
+
+## Matrix State Representation Random Search
+
+asf
+
+## Vector State Representation Random Search
