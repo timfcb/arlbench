@@ -22,8 +22,6 @@ Implementation of our version of MDP Playground inspired by Toy Environment of [
 Default hyperparameter configuration for each state representation (vector, matrix, image). The configuration is the incumbent configuration of a random search performed on one RL Grid Environment with the following properties:
 
 
-## Vector State Representation Random Search
-
 | Property       | Value |
 | --------------- | --------------- |
 | Grid Size       | 10x10  |
@@ -36,6 +34,10 @@ Default hyperparameter configuration for each state representation (vector, matr
 | Reward Scaling Factor | 1.0 |
 | Reward Shift | 0.0 |
 | Reward Probability | 1.0 |
+
+
+## Vector State Representation Random Search
+
 
 The random search using the arlbench and a training scope of 10 million timesteps yields the following best performing hyperparameter configuration:
 
@@ -54,6 +56,5 @@ The random search using the arlbench and a training scope of 10 million timestep
 
 ## Matrix State Representation Random Search
 
-asf
 
 ## Vector State Representation Random Search
