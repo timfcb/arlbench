@@ -34,7 +34,7 @@ class GridEnv:
         if 'grid_shape' in config:
             self.grid_shape = tuple(config['grid_shape'])
         else:
-            self.grid_shape = (5, 5)
+            self.grid_shape = (10, 10)
 
         if 'state_representation' in config:
             self.state_representation = config['state_representation']
@@ -82,7 +82,7 @@ class GridEnv:
         if 'reward_delay_prob' in config:
             delay_prob = config['reward_delay_prob']
         else:
-            delay_prob = 1.0
+            delay_prob = 0.0
 
         self.reward_shape = RewardShape(
             noise=reward_noise_std,

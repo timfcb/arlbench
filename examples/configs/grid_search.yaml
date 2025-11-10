@@ -1,0 +1,107 @@
+# Parameters for Grid Search Experiment
+experiment_name: "Grid_Search"
+state_representation: vector
+cnn_policy: False
+n_total_timesteps: 1000
+grid_shape: [10, 10]
+n_envs: 1
+seed: 42
+n_eval_steps: 10
+n_eval_episodes: 10
+
+# Environment Properties for Grid Search
+env_config:
+  grid_shape:
+    value_range: []
+    default: [10, 10]
+  max_steps_in_episode:
+    value_range: []
+    default: 36
+  transition_noise:
+    value_range: [1.0, 2.0, 3.0]
+    default: 0.0
+  frac_term_states:
+    value_range: []
+    default: 0.0
+  reward_scaling:
+    value_range: []
+    default: 1.0
+  reward_probability:
+    value_range: []
+    default: 1.0
+  reward_shift:
+    value_range: []
+    default: 0.0
+  reward_noise:
+    value_range: []
+    default: 0.0
+  reward_delay_prob:
+    value_range: []
+    default: 0.0
+
+# Hyperparameters for Grid Search
+hp_config:
+  buffer_prio_sampling: 
+    value_range: []
+    default: false
+  buffer_alpha: 
+    value_range: []
+    default: 0.9
+  buffer_beta:
+    value_range: []
+    default: 0.9
+  buffer_epsilon: 
+    value_range: []
+    default: 0.001
+  buffer_batch_size: 
+    value_range: []
+    default: 16
+  buffer_size:
+    value_range: []
+    default: 100000
+  initial_epsilon: 
+    value_range: []
+    default: 1.0
+  target_epsilon: 
+    value_range: []
+    default: 0.05
+  exploration_fraction: 
+    value_range: []
+    default: 0.1
+  gamma:
+    value_range: []
+    default: 0.99
+  gradient_steps: 
+    value_range: []
+    default: 1
+  learning_rate:
+    value_range: []
+    default: 0.0003
+  learning_starts:
+    value_range: []
+    default: 128
+  normalize_observations:
+    value_range: []
+    default: false
+  train_freq:
+    value_range: []
+    default: 4
+  use_target_network:
+    value_range: []
+    default: true
+  target_update_interval:
+    value_range: []
+    default: 1000
+  tau: 
+    value_range: []
+    default: 1.0
+
+# Neural Archticecture Search Configurations
+nas_config:
+  activation:
+    value_range: []
+    default: tanh
+  hidden_size:
+    value_range: []
+    default: 64
+
