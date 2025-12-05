@@ -1,8 +1,8 @@
 """Console script for arlbench."""
-
 from __future__ import annotations
 
 import warnings
+import os
 
 warnings.filterwarnings("ignore")
 import logging

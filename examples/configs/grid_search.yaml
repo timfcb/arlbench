@@ -1,5 +1,5 @@
 # Parameters for Grid Search Experiment
-experiment_name: "Grid_Search"
+experiment_name: "cluster"
 state_representation: vector
 cnn_policy: False
 n_total_timesteps: 1000
@@ -8,17 +8,20 @@ n_envs: 1
 seed: 42
 n_eval_steps: 10
 n_eval_episodes: 10
+number_seeds: 2
+device: 'cpu'
 
 # Environment Properties for Grid Search
+# 5 Values pro Property
 env_config:
   grid_shape:
-    value_range: []
+    value_range: [[9,9], [8,8]]
     default: [10, 10]
   max_steps_in_episode:
-    value_range: []
+    value_range: [20,30]
     default: 36
   transition_noise:
-    value_range: [1.0, 2.0, 3.0]
+    value_range: []
     default: 0.0
   frac_term_states:
     value_range: []
@@ -38,6 +41,9 @@ env_config:
   reward_delay_prob:
     value_range: []
     default: 0.0
+
+### N_envs tunen (rel. to train_freq)
+# Minigrid anschauen
 
 # Hyperparameters for Grid Search
 hp_config:
@@ -69,13 +75,13 @@ hp_config:
     value_range: []
     default: 0.1
   gamma:
-    value_range: []
+    value_range: [0.9, 0.95, 0.99]
     default: 0.99
   gradient_steps: 
     value_range: []
     default: 1
   learning_rate:
-    value_range: []
+    value_range: [0.001, 0.002]
     default: 0.0003
   learning_starts:
     value_range: []
@@ -105,3 +111,10 @@ nas_config:
     value_range: []
     default: 64
 
+hydra:
+  run:
+    dir: results/${experiment_name}
+  sweep:
+    dir: results/${experiment_name}
+  job:
+    chdir: true
