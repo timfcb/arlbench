@@ -10,76 +10,82 @@ from utils import get_data
 from rliable import library as rly
 from rliable import metrics
 
-
-### File to compute THC scores per hyperparameter
 # TODO Top-1-Consistency, Tuneability metric anschauen
-
 # Compute thc only makes sense if hp value ranges are given
-
 #TODO performance differnecs in thc miteinbeziehen
 
-def compute_rankings(data, mode='std'):
+### File to compute THC scores per hyperparameter
+
+def compute_rankings(data, hp_values, mode='iqm'):
     # Two different modes: iqm and std
 
-    ### Data is np.array from shape (number_envs, number_values, number_seeds)
+    #Data is np.array from shape (number_envs, number_values, number_seeds)
+    bounds = np.empty((len(data), len(data[0]), 2))
 
     if mode == 'std':
-        ### Algorithm is taken for
-        ### Generate list of tuple(mean, std)
-        bounds = np.empty((len(data), len(data[0]), 2))
+        # Generate list of tuple(mean, std)
         for ind_env, env in enumerate(data):
             for ind_values, values in enumerate(env):
-                metrics = np.mean(values), np.std(values)
-                bounds[ind_env][ind_values][0] = metrics[0] + metrics[1]
-                bounds[ind_env][ind_values][1] = metrics[0] - metrics[1]    
-        ### Sortiere für jede environment die values und speichere nur das Ranking im array
-        rankings = np.empty((len(data), len(data[0]))).astype(float)
-
-        for ind_env, env in enumerate(bounds):
-            ## Get upper bounds of one env:
-            upper_bounds, lower_bounds = [x[0] for x in env], [x[1] for x in env]
-
-            r = np.argsort(upper_bounds)[::-1]
-
-            sorted_upper = [upper_bounds[j] for j in r]
-            sorted_lower = [lower_bounds[k] for k in r]
-
-            final_rankings = []
-
-            ### Iterate over each hyperparameter value
-            for j in range(len(sorted_upper)):
-                u,l = 0,0
-
-                for i in range(0,j+1):
-                    if sorted_upper[j] >= sorted_lower[i]:
-                        u = i+1
-                        break
-
-                for k in range(len(sorted_upper)-1, j-1, -1):
-                    if sorted_lower[j] <= sorted_upper[k]:
-                        l = k+1
-                        break
-                
-                final_rank = (u+l) / 2
-
-                final_rankings.append(final_rank)
-
-            correct_ranking_order = np.zeros(len(final_rankings))
-
-            for ind, pos in enumerate(r):
-                correct_ranking_order[pos] = final_rankings[ind]
-            rankings[ind_env] = correct_ranking_order
+                standard_metrics = np.mean(values), np.std(values)
+                bounds[ind_env][ind_values][0] = round(standard_metrics[0] - standard_metrics[1], 4)
+                bounds[ind_env][ind_values][1] = round(standard_metrics[0] + standard_metrics[1], 4)
 
     elif mode == 'iqm':
-        # TODO
 
-        ### Rliable nutzen
-        pass
+        aggregate_function = lambda x: np.array([metrics.aggregate_iqm(x)])
+        for ind_env, env in enumerate(data):
 
-    # TODO other options
+            values_dict = dict(zip(hp_values, np.expand_dims(env, axis=2)))
+            
+            aggregate_scores, aggregate_score_cis = rly.get_interval_estimates(
+                values_dict, aggregate_function, reps=5000
+            )
+
+            ci_bounds = [val.flatten().tolist() for val in aggregate_score_cis.values()]
+            ci_bounds_rounded = [[round(x, 4) for x in bound_pair] for bound_pair in ci_bounds]
+
+            bounds[ind_env] = ci_bounds_rounded
 
     else:
         raise ValueError('Invalid mode')
+
+    ### This section gets bounds and computes rankings (same for both statistical methods)
+    rankings = np.empty((len(data), len(data[0]))).astype(float)
+
+    for ind_env, env in enumerate(bounds):
+        # Get upper bounds of one env:
+        lower_bounds, upper_bounds = [x[0] for x in env], [x[1] for x in env]
+
+        r = np.argsort(upper_bounds)[::-1]
+
+        sorted_upper = [upper_bounds[j] for j in r]
+        sorted_lower = [lower_bounds[k] for k in r]
+
+        final_rankings = []
+
+        # Iterate over each hyperparameter value
+        for j in range(len(sorted_upper)):
+            u,l = 0,0
+
+            for i in range(0,j+1):
+                if sorted_upper[j] >= sorted_lower[i]:
+                    u = i+1
+                    break
+
+            for k in range(len(sorted_upper)-1, j-1, -1):
+                if sorted_lower[j] <= sorted_upper[k]:
+                    l = k+1
+                    break
+            
+            final_rank = (u+l) / 2
+
+            final_rankings.append(final_rank)
+
+        correct_ranking_order = np.zeros(len(final_rankings))
+
+        for ind, pos in enumerate(r):
+            correct_ranking_order[pos] = final_rankings[ind]
+        rankings[ind_env] = correct_ranking_order   
 
     return rankings
 
@@ -100,8 +106,6 @@ def compute_normalized_ptp(rankings):
 
 def compute_thc(folder):
 
-    # Experiment folder
-    result_dir = Path('results/' + folder)
     exp_dir = Path('examples/configs/' + folder + '/info.yaml')
     
     cfg = OmegaConf.load(exp_dir)
@@ -113,8 +117,8 @@ def compute_thc(folder):
 
     all_rankings = []
     for ind_hp, hp_param in enumerate(hp_list):
-        data = get_data(hp_param, result_dir)
-        rankings = compute_rankings(data)
+        data = get_data(hp_param, folder)
+        rankings = compute_rankings(data, info_dict['hp'][hp_param])
         all_rankings.append(rankings)
 
     normalized_ptp = compute_normalized_ptp(all_rankings)
@@ -122,10 +126,10 @@ def compute_thc(folder):
     final_thc_per_hp = {}
 
     for ind_hp, hp_param in enumerate(hp_list):
-        final_thc_per_hp[hp_param] = sum(normalized_ptp[ind_hp]) / len(normalized_ptp[ind_hp])
+        final_thc_per_hp[hp_param] = round(sum(normalized_ptp[ind_hp]) / len(normalized_ptp[ind_hp]),4)
 
     ### Save results in thc csv file
-    thc_path = f'results/{folder}/thc_per_hp.csv'
+    thc_path = f'results/{folder}/thc_score.csv'
     with open(thc_path, 'w+') as f:
         f.write('Hyperparameter,THC score\n')
         for hp_param in final_thc_per_hp:

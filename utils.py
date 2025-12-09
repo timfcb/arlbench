@@ -33,7 +33,6 @@ def env_name_resolution(folders_name):
             new_list.append(elem)
             counter = 0
 
-    # Case Distinction:
     final_list = []
     for ind_elem, elem in enumerate(new_list):
         if elem[0].isalpha():
@@ -61,7 +60,10 @@ def env_name_resolution(folders_name):
     return env_name
 
 
-def get_data(hp_param, folder):
+def get_data(hp_param, experiment_name):
+
+    # Experiment folder
+    folder = Path('results/' + experiment_name)
     env_folder = [env_folder for env_folder in folder.iterdir() if env_folder.is_dir() and env_folder.name.startswith("Env")]
     hp_folder = [hp_folder for hp_folder in env_folder[0].iterdir() if hp_folder.name == f'Hp_{hp_param}' and hp_folder.is_dir()]
     value_folder = [value_folder for value_folder in hp_folder[0].iterdir()]
@@ -93,7 +95,11 @@ def get_data(hp_param, folder):
 
     return data
 
-def get_data_no_hp(folder):
+def get_data_no_hp(experiment_name):
+
+    # Experiment folder
+    folder = Path('results/' + experiment_name)
+
     env_folders = [env_folder for env_folder in folder.iterdir() if env_folder.is_dir() and env_folder.name.startswith("Env")]
     seed_folder = [seed_folder for seed_folder in env_folders[0].iterdir()]
     
