@@ -3,6 +3,28 @@ import jax.numpy as jnp
 from typing import TYPE_CHECKING, Any
 
 
+def reward_normal_step(args):
+
+    rng_noise, reward_parameters, env_state, new_agent_position = args
+
+    # Dense reward: Reward is given for every step (change in manhattan distance to target)
+    manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
+    manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
+    # Scaling of manhattan distance change (theta 4)
+    reward = (manhat_dist_old - manhat_dist_new) * reward_parameters.manhattan_distance_scaling
+
+    # Adding reward noise (theta 5)
+    computed_noise = jax.random.normal(rng_noise) * reward_parameters.noise
+    reward += computed_noise
+
+    # Scaling with reward scaling factor (theta 6)
+    reward *= reward_parameters.scaling_factor
+
+    # Shift with reward shift (theta 3)
+    reward += reward_parameters.shift
+
+    return jnp.float64(reward)
+
 def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_prob: jnp.float64, delayed_rewards: jnp.ndarray):
     """Computes the accumulated reward for this step and updates the delayed rewards array.
     Args:
@@ -33,41 +55,36 @@ def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_
 def compute_reward(reward_state):
     """Computes the reward value for taking a certain action in current state.
     Args:
-        reward_state: (rng_compute, env_state, new_agent_position, reward_shape).
+        reward_state: (rng_compute, env_state, new_agent_position, terminated, reached_term,reward_parameters).
     Returns:
         reward_in_step (jnp.float): Reward for current step for the agent
         remaining_rewards (jnp.ndarray): Keeps track of all delayed rewards
     """
-    rng, env_state, new_agent_position, reward_shape = reward_state
-    noise = reward_shape.noise
-    scaling_factor = reward_shape.scaling_factor
-    shift = reward_shape.shift
-    delay_prob = reward_shape.delay_prob
+    rng, env_state, new_agent_position, terminated, reached_term, reward_parameters = reward_state
 
     reward = jnp.float64(0.0)
 
-    # Dense reward: Reward is given for every step (change in manhattan distance to target)
-    manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
-    manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
-    reward = manhat_dist_old - manhat_dist_new
-
-    # Environment property: Reward scaling
-    reward *= scaling_factor
-
-    # Environment property: Reward shift
-    reward += shift
-
-    # Environment property: Reward noise
     rng, rng_noise = jax.random.split(rng)
-    computed_noise = jax.random.normal(rng_noise) * noise
-    reward += computed_noise
 
-    reward_in_step, delayed_rewards = compute_delayed_rewards(rng, reward, delay_prob, env_state.delayed_rewards)
+    normal_step_params = (rng_noise, reward_parameters, env_state, new_agent_position)
+
+    # Reward structure: three different cases: Reaching target, reaching terminal failure state, normal step
+    reward = jax.lax.cond(
+        terminated,
+        lambda: jnp.float64(reward_parameters.success_reward),
+        lambda: jax.lax.cond(
+            reached_term,
+            lambda _: jnp.float64(reward_parameters.terminal_state_penalty),
+            lambda normal_step_params: reward_normal_step(normal_step_params),
+            operand=normal_step_params,
+        )
+    )
+
+    reward_in_step, delayed_rewards = compute_delayed_rewards(rng, reward, reward_parameters.delay_prob, env_state.delayed_rewards)
     
     return reward_in_step, delayed_rewards
 
-
-def reward_function(rng: jax.random.PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, reward_shape: Any):
+def reward_function(rng: jax.random.PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: Any, reached_term: Any, reward_parameters: Any):
     """Central function for managing reward structure
     Args:
         rng (PRNGKey): PRNG key, consumable by random functions.
@@ -82,9 +99,9 @@ def reward_function(rng: jax.random.PRNGKey, env_state: Any, new_agent_position:
     rng, rng_prob = jax.random.split(rng)
     random_value = jax.random.uniform(rng_prob)
     rng, rng_compute = jax.random.split(rng)
-    reward_state = (rng_compute, env_state, new_agent_position, reward_shape)
+    reward_state = (rng_compute, env_state, new_agent_position, terminated, reached_term, reward_parameters)
     reward_in_step, delayed_rewards = jax.lax.cond(
-        random_value < reward_shape.probability,
+        random_value < reward_parameters.probability,
         lambda reward_state: compute_reward(reward_state),
         lambda _: (jnp.float64(0.0), jnp.concatenate([jnp.array([0.0]), env_state.delayed_rewards[:-1]])),
         operand=reward_state

@@ -13,7 +13,7 @@ from flax import struct
 from .utils.utils import get_random_positions
 from .utils.observation import get_obs, init_obs_space
 from .utils.reward import reward_function
-from .data_classes import EnvState, RewardShape
+from .data_classes import EnvState, RewardParameters
 
 if TYPE_CHECKING:
     from chex import PRNGKey
@@ -30,6 +30,12 @@ class GridEnv:
     ):
 
         '''Dimensions of Hardness in the Environment'''
+
+        ### Debugging reasons:
+        if 'is_eval' in config:
+            self.is_eval = config['is_eval']
+        else:
+            self.is_eval = False
 
         if 'grid_shape' in config:
             self.grid_shape = tuple(config['grid_shape'])
@@ -58,36 +64,61 @@ class GridEnv:
 
         self.number_terminal_states = int(self.grid_shape[0] * self.grid_shape[1] * frac_term_states)
 
-        # Specification of reward shape
-        if 'reward_scaling' in config:
-            reward_scaling = config['reward_scaling']
+        '''Reward Function Parameters'''
+        # Theta 1 in thesis
+        if 'success_reward' in config:
+            success_reward = config['success_reward']
         else:
-            reward_scaling = 1.0
+            success_reward = 1.0
 
-        if 'reward_probability' in config:
-            reward_probability = config['reward_probability']
+        # Theta 2 in thesis
+        if 'terminal_state_penalty' in config:
+            terminal_state_penalty = config['terminal_state_penalty']
         else:
-            reward_probability = 1.0
+            terminal_state_penalty = -1.0
 
+        # Theta 3 in thesis
         if 'reward_shift' in config:
             reward_shift = config['reward_shift']
         else:
             reward_shift = 0.0
 
+        # Theta 4 in thesis
+        if 'manhattan_dist_scaling' in config:
+            manhattan_dist_scaling = config['manhattan_dist_scaling']
+        else:
+            manhattan_dist_scaling = 1.0    
+
+        # Theta 5 in thesis
         if 'reward_noise' in config:
             reward_noise_std = config['reward_noise']
         else:
             reward_noise_std = 0.0
+
+        # Theta 6 in thesis
+        if 'reward_scaling_factor' in config:
+            reward_scaling = config['reward_scaling_factor']
+        else:
+            reward_scaling = 1.0
+
+        # Extra Parameters for reward shape: not needed for now
+        if 'reward_probability' in config:
+            reward_probability = config['reward_probability']
+        else:
+            reward_probability = 1.0
 
         if 'reward_delay_prob' in config:
             delay_prob = config['reward_delay_prob']
         else:
             delay_prob = 0.0
 
-        self.reward_shape = RewardShape(
+        self.reward_parameters = RewardParameters(
+            success_reward=success_reward,
+            terminal_state_penalty=terminal_state_penalty,
+            shift=reward_shift,
+            manhattan_distance_scaling=manhattan_dist_scaling,
             noise=reward_noise_std,
             scaling_factor=reward_scaling,
-            shift=reward_shift,
             probability=reward_probability,
             delay_prob=delay_prob,
         )
@@ -141,7 +172,9 @@ class GridEnv:
             rng,
             env_state,
             new_agent_position,
-            self.reward_shape
+            terminated,
+            reached_term,
+            self.reward_parameters,
         )
 
         # Compute new environment state and observation
@@ -187,10 +220,10 @@ class GridEnv:
             grid_shape=self.grid_shape, 
             n=(2 + self.number_terminal_states),
         )
-        
+
         env_state = EnvState(
             agent_position=agent_position,
-            target_position=target_position, 
+            target_position=target_position,
             terminal_states=terminal_states,
             delayed_rewards = jnp.zeros(self.max_steps_in_episode, dtype=jnp.float64),
             counter=1,

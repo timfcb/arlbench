@@ -13,11 +13,19 @@ class EnvState():
     counter: int = 1
 
 @struct.dataclass
-class RewardShape():
+class RewardParameters():
     """Reward Structure for MDP Playground"""
-    delay_prob: float = 1.0
-    noise: float = 0.0
-    scaling_factor: float = 0.0
+    # Theta 1 in thesis
+    success_reward: float = 1.0
+    # Theta 2 in thesis
+    terminal_state_penalty: float = -1.0
+    # Theta 3 in thesis
     shift: float = 0.0
-    every_n_steps: int = 1
+    # Theta 4 in thesis
+    manhattan_distance_scaling: float = 1.0
+    # Theta 5 in thesis
+    noise: float = 0.0
+    # Theta 6 in thesis
+    scaling_factor: float = 1.0
+    delay_prob: float = 1.0
     probability: float = 1.0

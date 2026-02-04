@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import hydra
 import jax
-from arlbench.arlbench import run_arlbench
+from arlbench.arlbench_old import run_arlbench
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

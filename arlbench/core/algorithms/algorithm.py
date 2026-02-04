@@ -210,7 +210,7 @@ class Algorithm(ABC):
 
         Returns:
             tuple[tuple[chex.PRNGKey, Any], jnp.ndarray]: ((rng, runner_state), reward). Current state of the evaluation and cumulative rewards.
-        """
+        """ 
         rng, runner_state = state
         rng, reset_rng = jax.random.split(rng)
 

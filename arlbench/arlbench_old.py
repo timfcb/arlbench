@@ -36,13 +36,13 @@ def run_arlbench(cfg: DictConfig, logger: Logger | None = None) -> float | tuple
     env = AutoRLEnv(cfg.autorl)
     _ = env.reset()
 
-    #if logger:
-    #    logger.info("Your AutoRL config is:")
-    #    logger.info(OmegaConf.to_yaml(cfg.autorl))
-    #    logger.info("Training started.")
+    if logger:
+        logger.info("Your AutoRL config is:")
+        logger.info(OmegaConf.to_yaml(cfg.autorl))
+        logger.info("Training started.")
     _, objectives, _, _, info = env.step(cfg.hp_config, checkpoint_path=checkpoint_path)
-    #if logger:
-    #    logger.info("Training finished.")
+    if logger:
+        logger.info("Training finished.")
 
     # Additionally, we store the evaluation rewards we had during training
     #info["train_info_df"].to_csv("evaluation.csv", index=False)

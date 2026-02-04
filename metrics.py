@@ -12,9 +12,9 @@ from rliable import metrics
 
 # TODO Top-1-Consistency, Tuneability metric anschauen
 # Compute thc only makes sense if hp value ranges are given
-#TODO performance differnecs in thc miteinbeziehen
+#TODO performance differencecs in thc miteinbeziehen
 
-### File to compute THC scores per hyperparameter
+# THC-score metric and helper functions
 
 def compute_rankings(data, hp_values, mode='iqm'):
     # Two different modes: iqm and std
@@ -95,7 +95,6 @@ def compute_normalized_ptp(rankings):
     ### Workaround for np.ptp
     for hp in rankings:
         ptp_values.append(np.ptp(hp, axis=0))
-    
 
     ptp_values_normalized = []
 
@@ -104,32 +103,25 @@ def compute_normalized_ptp(rankings):
 
     return ptp_values_normalized
 
-def compute_thc(folder):
-
-    exp_dir = Path('examples/configs/' + folder + '/info.yaml')
-    
-    cfg = OmegaConf.load(exp_dir)
-
-    # Convert to Python dict
-    info_dict = OmegaConf.to_container(cfg, resolve=True)
-
-    hp_list = list(info_dict['hp'].keys())
+# Function to compute thc scores per hyperparameter
+def compute_thc(experiment_name, hp_values, number_seeds):
 
     all_rankings = []
-    for ind_hp, hp_param in enumerate(hp_list):
-        data = get_data(hp_param, folder)
-        rankings = compute_rankings(data, info_dict['hp'][hp_param])
+
+    for ind_hp, hp_param in enumerate(hp_values.keys()):
+        data = get_data(experiment_name, hp_param, hp_values[hp_param], number_seeds)
+        rankings = compute_rankings(data, hp_values[hp_param])
         all_rankings.append(rankings)
 
     normalized_ptp = compute_normalized_ptp(all_rankings)
 
     final_thc_per_hp = {}
 
-    for ind_hp, hp_param in enumerate(hp_list):
+    for ind_hp, hp_param in enumerate(hp_values.keys()):
         final_thc_per_hp[hp_param] = round(sum(normalized_ptp[ind_hp]) / len(normalized_ptp[ind_hp]),4)
 
     ### Save results in thc csv file
-    thc_path = f'results/{folder}/thc_score.csv'
+    thc_path = f'results/{experiment_name}/thc_score.csv'
     with open(thc_path, 'w+') as f:
         f.write('Hyperparameter,THC score\n')
         for hp_param in final_thc_per_hp:
@@ -138,13 +130,17 @@ def compute_thc(folder):
     return final_thc_per_hp
 
 
+
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--folder', type=str)
+    experiment_name = 'Grid_Search_Experiment_1'
+    hp_values = {
+        'learning_rate': [1.0e-05, 0.0001, 0.001, 0, 1]
+    }
 
-    args = parser.parse_args()
+    number_seeds = 5
 
-    # THC computation works well
-    # TODO add computation of iqm with confidence intervals as metric to compute rankings (In Paper: both options, here: only mean and std)
-    compute_thc(args.folder)
+    thc_scores = compute_thc(experiment_name, hp_values, number_seeds)
+
+    print(f'THC Scores for experiment {experiment_name}:')
+    print(thc_scores)

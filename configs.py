@@ -10,13 +10,16 @@ from omegaconf import DictConfig, OmegaConf
 from itertools import product
 from collections import OrderedDict
 import numpy as np
+from utils import remove_points
 
 
 def create_experiment(cfg : DictConfig):
 
     grid_dict = OmegaConf.to_container(cfg, resolve=True)
 
-    path = 'examples/configs/' + grid_dict['experiment_name']
+    experiment_name = grid_dict['experiment_name']
+
+    path = 'examples/configs/' + experiment_name
 
     ### Create folder for configs
     base_folder = path
@@ -28,83 +31,40 @@ def create_experiment(cfg : DictConfig):
     base_dict['jax_enable_x64'] = True
     base_dict['load_checkpoint'] = ""
 
-    ### Environment properties Grid Search
-    env_kwargs, properties_grid, grid_search_items, prop_values = organise_env_properties(grid_dict)
-
-    ### Hyperparameter Grid Search
-    hp_dict, hp_config, hp_range, hp_values, number_hp_values = organise_hp_properties(grid_dict)
-
     # Nas configuration
     nas_config = get_nas_config(grid_dict)
 
-    ### Create all combinations of grid search
-    counter = 0
-    for idx, item in enumerate(grid_search_items):
+    # Get the number of seeds
+    seeds = grid_dict['different_seeds']
 
-        # Naming environment and result path creation
-        if item == ():
-            env_name = 'Env_Default'
-        else:
-            env_name = 'Env_' + '_'.join(f'{k}_{remove_points(v)}' for k, v in zip(properties_grid, item))
-            
-        config = base_dict.copy()
-        folder = grid_dict['experiment_name'] + '/' + env_name
+    create_file(base_dict, path, grid_dict, nas_config, experiment_name)
 
-        # Assign env properties with values from grid search
-        for p_idx, prop in enumerate(properties_grid):
-            env_kwargs[prop] = item[p_idx]
+    env_kwargs, env_cardinalities, env_property_names = get_env_properties(grid_dict)
 
-        # Case distinction whether hp values are changed over identical environments
-        if hp_range:
-
-            # Iterate over value range of one hyperparameter and set others to default
-            for ind, hp in enumerate(hp_range):
-                for val in hp_values[ind]:
-                    hp_config[hp] = val
-                    for other_hps in [h for h in hp_range if h != hp]:
-                        hp_config[other_hps] = hp_dict[other_hps]['default']
-
-                    result_folder = folder + f'/Hp_{hp}/{remove_points(val)}'
-                    counter = create_file(config, hp_config, path, env_name, env_kwargs, grid_dict, nas_config, result_folder, counter)
-
-        else:
-            result_folder = folder
-            counter = create_file(config, hp_config, path, env_name, env_kwargs, grid_dict, nas_config, result_folder, counter)
+    hp_defaults, hp_values = get_hp_properties(grid_dict)  
 
     # Create info file in folder showing env properties with values for grid search and hp value ranges 
     info_dict = {}
 
-    hp_info = {}
-    for ind_hp, hp in enumerate(hp_range):
-        hp_info[hp] = hp_values[ind_hp]
-
-    env_info = {}
-    for ind_prop, prop in enumerate(properties_grid):
-        env_info[prop] = prop_values[ind_prop]
-
-    info_dict['hp'] = hp_info
-    info_dict['env'] = env_info
-    info_dict['seeds'] = grid_dict['number_seeds']
+    info_dict['hp_defaults'] = hp_defaults
+    info_dict['hp_values'] = hp_values
+    info_dict['env'] = env_kwargs
+    info_dict['seeds'] = grid_dict['different_seeds']
 
     # Save config as yaml
     with open(os.path.join(path, f'info.yaml'), 'w') as f:
         yaml.dump(info_dict, f, sort_keys=False)
 
-    number_experiments = counter
-    return number_experiments, grid_dict['experiment_name'], grid_dict['number_seeds'], len(grid_search_items), number_hp_values
+    return env_cardinalities, experiment_name, env_property_names, hp_defaults, hp_values, seeds
+
 
 # Build end config file and save as yaml
-def create_file(config, hp_config, path, env_name, env_kwargs, grid_dict, nas_config, result_folder, counter):
-
-    config['hp_config'] = hp_config.copy()
+def create_file(config, path, grid_dict, nas_config, result_folder):
 
     # Create autorl config
     autorl_dict = {}
     autorl_dict['seed'] = grid_dict['seed']
     autorl_dict['env_framework'] = 'mdp'
-    autorl_dict['env_name'] = env_name
-    autorl_dict['env_kwargs'] = env_kwargs.copy()
-    autorl_dict['eval_env_kwargs'] = env_kwargs.copy()
     autorl_dict['n_envs'] = grid_dict['n_envs']
     autorl_dict['algorithm'] = 'dqn'
     autorl_dict['cnn_policy'] = grid_dict['cnn_policy']
@@ -137,12 +97,8 @@ def create_file(config, hp_config, path, env_name, env_kwargs, grid_dict, nas_co
     config_omega = OmegaConf.create(config)
 
     folder_experiment = path
-    with open(os.path.join(folder_experiment, f'config_{counter}.yaml'), 'w') as f:
+    with open(os.path.join(folder_experiment, f'config.yaml'), 'w') as f:
         yaml.dump(OmegaConf.to_container(config_omega, resolve=True), f)
-
-    counter += 1
-
-    return counter
 
 # Get nas configuration with default values
 def get_nas_config(grid_dict):
@@ -155,57 +111,38 @@ def get_nas_config(grid_dict):
     return nas_config
 
 # Organise env properties with value ranges for grid search and assign the rest with default values
-def organise_env_properties(grid_dict):
+def get_env_properties(grid_dict):
+
     env_kwargs = {}
+    env_property_names = []
+    env_cardinalities = {}
     env_config = grid_dict['env_config']
-    properties_grid = []
-    properties_default = []
-    prop_values = []
-    for property, values in env_config.items():
-        if not values['value_range']:
-            properties_default.append(property)
-        else:
-            properties_grid.append(property)
-            prop_values.append(values['value_range'])
 
-    grid_search_items = list(product(*prop_values))
-    
-    ## Set the default properties to their default value
-    for prop in properties_default:
-        env_kwargs[prop] = env_config[prop]['default']
+    for prop, values in env_config.items():
+        env_kwargs[prop] = values['values']
+        env_cardinalities[prop] = len(values['values'])
+        env_property_names.append(prop)
 
-    return env_kwargs, properties_grid, grid_search_items, prop_values
+    return env_kwargs, env_cardinalities, env_property_names
 
 # Organise hyperparameter properties with value ranges for grid search and assign the rest with default values
-def organise_hp_properties(grid_dict):
-    hp_config = {}
+def get_hp_properties(grid_dict):
+
+    hp_defaults = {}
+    hp_values = {}
+
     hp_dict = grid_dict['hp_config']
     hp_range = []
     hp_default = []
-    hp_values = []
     for hp, values in hp_dict.items():
-        if not values['value_range']:
-            hp_default.append(hp)
-        else:
+        if len(values['value_range']):
             hp_range.append(hp)
-            hp_values.append(values['value_range'])
+        hp_default.append(hp)
 
     for hyperparam in hp_default:
-        hp_config[hyperparam] = hp_dict[hyperparam]['default']
+        hp_defaults[hyperparam] = hp_dict[hyperparam]['default']
 
-    number_hp_values = len([item for values in hp_values for item in values])
+    for hyperparam in hp_range:
+        hp_values[hyperparam] = hp_dict[hyperparam]['value_range']
 
-    return hp_dict, hp_config, hp_range, hp_values, number_hp_values
-
-def remove_points(val):
-
-    if isinstance(val, list):
-        val_string = str(val)
-        modified = val_string.replace('[', '').replace(']', '').replace(', ', '_')
-    else:
-        modified = val
-        str_val = str(val)
-        if '.' in str_val:
-            modified = str_val.replace('.', '_')
-
-    return modified
+    return hp_defaults, hp_values

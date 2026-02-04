@@ -1,0 +1,31 @@
+name: 'Mdp_Compute_Time'
+framework: 'mdp'
+n_total_timesteps: 1000000
+kwargs:
+  seed: 1
+  grid_shape: [8, 8]
+  state_representation: vector
+  max_steps_in_episode: 50
+  transition_noise: 0.0
+  frac_term_states: 0.0
+  reward_scaling: 1.0
+  reward_shift: 0.0
+  reward_noise: 0.0
+  reward_delay_prob: 0.0
+  reward_probability: 1.0
+eval_kwargs:
+  seed: 1
+  grid_shape: [8, 8]
+  state_representation: vector
+  max_steps_in_episode: 50
+  transition_noise: 0.0
+  frac_term_states: 0.0
+  reward_scaling: 1.0
+  reward_shift: 0.0
+  reward_noise: 0.0
+  reward_delay_prob: 0.0
+  reward_probability: 1.0
+cnn_policy: False
+deterministic_eval: True
+jax_enable_x64: True
+n_envs: 4

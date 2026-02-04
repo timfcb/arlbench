@@ -11,7 +11,6 @@ import jax.numpy as jnp
 from flax import struct
 
 from ..autorl_env import Environment
-from .data_classes import EnvState, RewardShape
 from .wrappers import AutoResetWrapper
 from .grid_env import GridEnv
 
