@@ -675,6 +675,26 @@ class DQN(Algorithm):
 
             global_step += 1
 
+            #jax.debug.print('Global step: {global_step}, State_t: {last_obs}, Action: {action}, State_t+1: {obsv}, Reward: {reward}, Done: {done}', global_step=global_step, last_obs=last_obs, action=action, obsv=obsv, reward=reward, done=done)
+
+            # Reset during training 
+            #TODO only works for 1 parallel env and for mdp
+            operands = rng, env_state, obsv
+
+            def reset_after_episode(operands):
+                rng, _, _ = operands 
+                rng, reset_rng = jax.random.split(rng)
+                env_state_reset, observation_reset = self.env.reset(reset_rng)
+                #jax.debug.print('Reset to observation: {}', observation_reset)
+                return rng, env_state_reset, observation_reset
+
+            rng, env_state, obsv = jax.lax.cond(
+                done[0],
+                lambda operands: reset_after_episode(operands),
+                lambda _: (rng,env_state,obsv), 
+                operand=operands,
+            )
+
             def target_update(train_state: DQNTrainState) -> DQNTrainState:
                 """Update the target network.
 

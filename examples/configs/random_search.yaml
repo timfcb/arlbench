@@ -1,18 +1,18 @@
 defaults:
   - _self_
-  - /algorithm: dqn
-  - /environment: cc_cartpole
-  - search_space: dqn
+  - /algorithm: dqn_hpo
+  - /environment: mdp_hpo_vector
+  - search_space: dqn_hpo
   - override hydra/sweeper: HyperRS
 
 hydra:
   sweeper:
-    n_trials: 16
+    n_trials: 40
     search_space: ${search_space}
     sweeper_kwargs:
       maximize: true
       max_parallelization: 1 #  run all of it at once
-      seeds: [42, 43, 44]
+      seeds: [1,27,33,41,59]
   run:
     dir: results/sobol/${algorithm}_${autorl.env_name}/${autorl.seed}
   sweep:

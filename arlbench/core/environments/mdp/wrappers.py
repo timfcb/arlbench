@@ -17,7 +17,7 @@ class AutoResetWrapper(Wrapper):
         env_state_reset, observation_reset = self._env.reset(key)
         env_state, (observation, reward, done, info) = timestep
 
-        return env_state_reset, (observation_reset, reward, done, info)
+        return env_state_reset, (observation, reward, done, info)
 
     def step(self, env_state: Any, action: Any, rng: jax.random.PRNGKey):
 

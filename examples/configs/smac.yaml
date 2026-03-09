@@ -1,13 +1,13 @@
 defaults:
   - _self_
   - /algorithm: dqn
-  - /environment: cc_cartpole
+  - /environment: mdp_hpo_vector
   - /search_space: dqn
   - override hydra/sweeper: HyperSMAC
 
 hydra:
   sweeper:
-    n_trials: 16
+    n_trials: 100
     budget_variable: autorl.n_total_timesteps
     search_space: ${search_space}
     sweeper_kwargs:
@@ -31,7 +31,7 @@ hydra:
           deterministic: false
           n_workers: 1
           output_directory: ${hydra.sweep.dir}
-      seeds: [42, 43, 44]
+      seeds: [1,2,3,4,5,6,7,8,9,10]
   run:
     dir: results/smac/${algorithm}_${autorl.env_name}/${smac_seed}/${seed}
   sweep:
@@ -61,5 +61,5 @@ autorl:
   state_features: []
   objectives: ["reward_mean"]
   optimize_objectives: "upper"
-  n_eval_steps: 10
+  n_eval_steps: 40
   n_eval_episodes: 128

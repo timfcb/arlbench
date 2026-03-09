@@ -84,7 +84,6 @@ def run(cfg : DictConfig):
 
     # Reward function parameters for evaluation: Identical on all environments
     eval_kwargs = {
-        'is_eval': True,
         'success_reward': 1.0,
         'terminal_state_penalty': 0.0,
         'reward_shift': 0.0,
@@ -145,8 +144,6 @@ def run(cfg : DictConfig):
                     cfg_exp.autorl.seed = seed
 
                     objective = round(execute_arlbench(cfg_exp, logger=logger),4)
-                    print(f'Config ID: {config_id}, HP: {hp}, Value: {value}, Seed: {seed}, Objective: {objective}')
-
                     seed_results.append(objective)
 
                 hp_results.append(seed_results)

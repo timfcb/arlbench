@@ -31,12 +31,6 @@ class GridEnv:
 
         '''Dimensions of Hardness in the Environment'''
 
-        ### Debugging reasons:
-        if 'is_eval' in config:
-            self.is_eval = config['is_eval']
-        else:
-            self.is_eval = False
-
         if 'grid_shape' in config:
             self.grid_shape = tuple(config['grid_shape'])
         else:
@@ -47,10 +41,10 @@ class GridEnv:
         else:
             self.state_representation = 'vector'
 
-        if 'max_steps_in_episode' in config:
-            self.max_steps_in_episode = config['max_steps_in_episode']
-        else:
-            self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1] - 2)
+        #if 'max_steps_in_episode' in config:
+        #    self.max_steps_in_episode = config['max_steps_in_episode']
+        #else:
+        self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1])
 
         if 'transition_noise' in config:
             self.transition_noise = config['transition_noise']
@@ -174,6 +168,7 @@ class GridEnv:
             new_agent_position,
             terminated,
             reached_term,
+            done,
             self.reward_parameters,
         )
 

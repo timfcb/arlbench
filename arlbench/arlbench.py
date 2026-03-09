@@ -45,9 +45,15 @@ def run_arlbench(cfg: DictConfig, logger: Logger | None = None) -> float | tuple
     #    logger.info("Training finished.")
 
     # Additionally, we store the evaluation rewards we had during training
-    #info["train_info_df"].to_csv("evaluation.csv", index=False)
+    info["train_info_df"].to_csv("evaluation.csv", index=False)
+    max_val = max(info["train_info_df"].iloc[:,1])
 
+    # Returns max avg return from returns after each 10% of the training
+    return max_val
+
+    '''
     if len(objectives) == 1:
         return objectives[next(iter(objectives.keys()))]
     else:
         return tuple(objectives.values())
+    '''

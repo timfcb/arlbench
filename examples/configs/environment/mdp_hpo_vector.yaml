@@ -1,0 +1,37 @@
+name: 'Mdp_HPO_3'
+framework: 'mdp'
+n_total_timesteps: 1000
+kwargs:
+  seed: 1
+  grid_shape: [5, 5]
+  state_representation: vector
+  max_steps_in_episode: 40
+  transition_noise: 0.0
+  frac_term_states: 0.0
+  success_reward: 1.0
+  terminal_state_penalty: 0.0
+  reward_shift: 0.0
+  manhattan_dist_scaling: 0.0
+  reward_noise: 0.0
+  reward_scaling_factor: 0.0
+  reward_delay_prob: 0.0
+  reward_probability: 1.0
+eval_kwargs:
+  seed: 1
+  grid_shape: [5, 5]
+  state_representation: vector
+  max_steps_in_episode: 40
+  transition_noise: 0.0
+  frac_term_states: 0.0
+  success_reward: 1.0
+  terminal_state_penalty: 0.0
+  reward_shift: 0.0
+  manhattan_dist_scaling: 0.0
+  reward_noise: 0.0
+  reward_scaling_factor: 0.0
+  reward_delay_prob: 0.0
+  reward_probability: 1.0
+cnn_policy: False
+deterministic_eval: True
+jax_enable_x64: True
+n_envs: 1

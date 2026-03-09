@@ -35,7 +35,7 @@ class MdpPlaygroundEnv(Environment):
         if config is None:
             config = {}
         env = GridEnv(config=config)
-        env = AutoResetWrapper(env)
+        #env = AutoResetWrapper(env)
         super().__init__(env_name, env, n_envs)
 
     @functools.partial(jax.jit, static_argnums=0)

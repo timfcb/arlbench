@@ -224,6 +224,8 @@ class Algorithm(ABC):
             runner_state,
         )
 
+        jax.debug.print('Eval episode reset: Observation: {}', obs)
+
         def cond_fn(state: tuple) -> jnp.bool:
             """Condition function for JAX while loop. Returns true if not all parallel environments are done.
 
@@ -254,11 +256,15 @@ class Algorithm(ABC):
                 runner_state, obs, action_rng, deterministic=self.deterministic_eval
             )
 
+            last_obs = obs
+
             # Step
             rng, step_rng = jax.random.split(rng)
             env_state, (obs, reward_, done_, info_) = self.eval_env.step(
                 env_state, action, step_rng
             )
+
+            jax.debug.print('Eval episode: State_t: {}, State_t+1: {}, Action: {}, Reward: {}, Done: {}, Info: {}', last_obs, obs, action, reward_, done_, info_)
 
             # Count rewards only for envs that are not already done
             reward += reward_ * ~done

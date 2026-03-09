@@ -25,7 +25,7 @@ def reward_normal_step(args):
 
     return jnp.float64(reward)
 
-def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_prob: jnp.float64, delayed_rewards: jnp.ndarray):
+def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_prob: jnp.float64, delayed_rewards: jnp.ndarray, done:Any):
     """Computes the accumulated reward for this step and updates the delayed rewards array.
     Args:
         rng (PRNGKey): PRNG key, consumable by random functions.
@@ -50,6 +50,15 @@ def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_
     accumulated_reward_in_step = jnp.sum(jnp.where(index_mask==True, updated_delayed_rewards, jnp.float64(0.0)))
     remaining_rewards = jnp.where(index_mask==False, updated_delayed_rewards, jnp.float64(0.0))
 
+    '''
+    ### If condition required for flushing the buffer if episode done
+    accumulated_reward_in_step = jax.lax.cond(
+        done,
+        lambda: accumulated_reward_in_step + jnp.sum(remaining_rewards),
+        lambda: accumulated_reward_in_step,
+        operand=None
+    )
+    '''
     return accumulated_reward_in_step, remaining_rewards
 
 def compute_reward(reward_state):
@@ -60,7 +69,7 @@ def compute_reward(reward_state):
         reward_in_step (jnp.float): Reward for current step for the agent
         remaining_rewards (jnp.ndarray): Keeps track of all delayed rewards
     """
-    rng, env_state, new_agent_position, terminated, reached_term, reward_parameters = reward_state
+    rng, env_state, new_agent_position, terminated, reached_term, done, reward_parameters = reward_state
 
     reward = jnp.float64(0.0)
 
@@ -80,11 +89,11 @@ def compute_reward(reward_state):
         )
     )
 
-    reward_in_step, delayed_rewards = compute_delayed_rewards(rng, reward, reward_parameters.delay_prob, env_state.delayed_rewards)
+    reward_in_step, delayed_rewards = compute_delayed_rewards(rng, reward, reward_parameters.delay_prob, env_state.delayed_rewards, done)
     
     return reward_in_step, delayed_rewards
 
-def reward_function(rng: jax.random.PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: Any, reached_term: Any, reward_parameters: Any):
+def reward_function(rng: jax.random.PRNGKey, env_state: Any, new_agent_position: jnp.ndarray, terminated: Any, reached_term: Any, done: Any, reward_parameters: Any):
     """Central function for managing reward structure
     Args:
         rng (PRNGKey): PRNG key, consumable by random functions.
@@ -99,7 +108,7 @@ def reward_function(rng: jax.random.PRNGKey, env_state: Any, new_agent_position:
     rng, rng_prob = jax.random.split(rng)
     random_value = jax.random.uniform(rng_prob)
     rng, rng_compute = jax.random.split(rng)
-    reward_state = (rng_compute, env_state, new_agent_position, terminated, reached_term, reward_parameters)
+    reward_state = (rng_compute, env_state, new_agent_position, terminated, reached_term, done, reward_parameters)
     reward_in_step, delayed_rewards = jax.lax.cond(
         random_value < reward_parameters.probability,
         lambda reward_state: compute_reward(reward_state),
