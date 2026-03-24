@@ -87,7 +87,6 @@ def run(cfg : DictConfig):
         'success_reward': 1.0,
         'terminal_state_penalty': 0.0,
         'reward_shift': 0.0,
-        'manhattan_dist_scaling': 0.0,
         'reward_noise': 0.0,
         'reward_scaling_factor': 0.0,
         'reward_probability': 1.0,
@@ -110,9 +109,8 @@ def run(cfg : DictConfig):
 
         ### Assign eval env with every env kwarg that does not belong to reward structure:
         eval_kwargs['grid_shape'] = env_kwargs['grid_shape']
-        eval_kwargs['max_steps_in_episode'] = env_kwargs['max_steps_in_episode']
         eval_kwargs['transition_noise'] = env_kwargs['transition_noise']
-        eval_kwargs['frac_term_states'] = env_kwargs['frac_term_states']
+        eval_kwargs['number_terminal_states'] = env_kwargs['number_terminal_states']
 
         ### This loads base yaml file for experiment
         experiment_path = f'examples/configs/{experiment_name}/config.yaml'
@@ -166,8 +164,8 @@ def run(cfg : DictConfig):
         if device=='cpu':
             executor.update_parameters(
                 job_name=experiment_name,
-                time='00:50:00',
-                cpus_per_task=1,
+                time='08:00:00',
+                cpus_per_task=24,
                 account='thes1998',
                 nodes=1,
                 partition='c23ms',

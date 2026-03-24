@@ -7,6 +7,8 @@ import functools
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, NamedTuple
 
+from jax.experimental import io_callback
+
 import jax
 import jax.lax
 import jax.numpy as jnp
@@ -675,9 +677,7 @@ class DQN(Algorithm):
 
             global_step += 1
 
-            #jax.debug.print('Global step: {global_step}, State_t: {last_obs}, Action: {action}, State_t+1: {obsv}, Reward: {reward}, Done: {done}', global_step=global_step, last_obs=last_obs, action=action, obsv=obsv, reward=reward, done=done)
-
-            # Reset during training 
+            # Reset during training
             #TODO only works for 1 parallel env and for mdp
             operands = rng, env_state, obsv
 

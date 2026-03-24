@@ -39,13 +39,15 @@ def run_arlbench(cfg: DictConfig, logger: Logger | None = None) -> float | tuple
     #if logger:
     #    logger.info("Your AutoRL config is:")
     #    logger.info(OmegaConf.to_yaml(cfg.autorl))
+    #    logger.info('Your hyperparameter config is:')
+    #    logger.info(OmegaConf.to_yaml(cfg.hp_config))
     #    logger.info("Training started.")
     _, objectives, _, _, info = env.step(cfg.hp_config, checkpoint_path=checkpoint_path)
     #if logger:
     #    logger.info("Training finished.")
 
     # Additionally, we store the evaluation rewards we had during training
-    info["train_info_df"].to_csv("evaluation.csv", index=False)
+    #info["train_info_df"].to_csv("evaluation.csv", index=False)
     max_val = max(info["train_info_df"].iloc[:,1])
 
     # Returns max avg return from returns after each 10% of the training

@@ -72,14 +72,16 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         grid_thickness = 1
         # black
         line_colour = (0, 0, 0)
-        # green
-        agent_colour = (0, 255, 0)
-        # yellow
+        # agent color
+        terminal_state_colour = (0, 255, 255)
+        # target colour
         target_colour = (255, 255, 0)
-        # dark blue
-        terminal_state_colour = (0,0,128)
+        # terminal state color
+        agent_colour = (0,0,255)
         # agent reaches target
-        goal_colour = (128,128,0)
+        goal_colour = (0,255,0)
+        # agent reaches terminal state
+        fail_colour = (255,0,0)
 
         # White img with 84x84 pixels
         img = jnp.full((84, 84, 3), 255, dtype=jnp.uint8)
@@ -141,7 +143,13 @@ class ImageContinuous(gymnax.environments.spaces.Box):
 
         if number_terminal_states:
             for ind, elem in enumerate(terminal_states):
-                img = draw_square_centered(img, elem, terminal_state_colour)
+
+                img = jax.lax.cond(
+                    jnp.all(agent_position == elem),
+                    lambda img: draw_square_centered(img, agent_position, fail_colour),
+                    lambda img: draw_square_centered(img, elem, terminal_state_colour),
+                    operand=img
+                )
 
         # Draw vertical grid lines
         for i in range(cols + 1):

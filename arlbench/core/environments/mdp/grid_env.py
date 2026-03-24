@@ -44,6 +44,7 @@ class GridEnv:
         #if 'max_steps_in_episode' in config:
         #    self.max_steps_in_episode = config['max_steps_in_episode']
         #else:
+            
         self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1])
 
         if 'transition_noise' in config:
@@ -51,12 +52,12 @@ class GridEnv:
         else:
             self.transition_noise = 0.0
 
-        if 'frac_term_states' in config:
-            frac_term_states = config['frac_term_states']
+        if 'number_terminal_states' in config:
+            number_terminal_states = config['number_terminal_states']
         else:
-            frac_term_states = 0.0
+            number_terminal_states = 0
 
-        self.number_terminal_states = int(self.grid_shape[0] * self.grid_shape[1] * frac_term_states)
+        self.number_terminal_states = number_terminal_states
 
         '''Reward Function Parameters'''
         # Theta 1 in thesis
@@ -78,28 +79,21 @@ class GridEnv:
             reward_shift = 0.0
 
         # Theta 4 in thesis
-        if 'manhattan_dist_scaling' in config:
-            manhattan_dist_scaling = config['manhattan_dist_scaling']
-        else:
-            manhattan_dist_scaling = 1.0    
-
-        # Theta 5 in thesis
-        if 'reward_noise' in config:
-            reward_noise_std = config['reward_noise']
-        else:
-            reward_noise_std = 0.0
-
-        # Theta 6 in thesis
         if 'reward_scaling_factor' in config:
             reward_scaling = config['reward_scaling_factor']
         else:
             reward_scaling = 1.0
 
-        # Extra Parameters for reward shape: not needed for now
+        # Extra Parameters concerning the reward signal
         if 'reward_probability' in config:
             reward_probability = config['reward_probability']
         else:
             reward_probability = 1.0
+
+        if 'reward_noise' in config:
+            reward_noise_std = config['reward_noise']
+        else:
+            reward_noise_std = 0.0
 
         if 'reward_delay_prob' in config:
             delay_prob = config['reward_delay_prob']
@@ -110,7 +104,6 @@ class GridEnv:
             success_reward=success_reward,
             terminal_state_penalty=terminal_state_penalty,
             shift=reward_shift,
-            manhattan_distance_scaling=manhattan_dist_scaling,
             noise=reward_noise_std,
             scaling_factor=reward_scaling,
             probability=reward_probability,

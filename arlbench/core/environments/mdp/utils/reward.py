@@ -5,19 +5,14 @@ from typing import TYPE_CHECKING, Any
 
 def reward_normal_step(args):
 
-    rng_noise, reward_parameters, env_state, new_agent_position = args
+    reward_parameters, env_state, new_agent_position = args
 
     # Dense reward: Reward is given for every step (change in manhattan distance to target)
     manhat_dist_old = jnp.sum(jnp.abs(env_state.agent_position - env_state.target_position))
     manhat_dist_new = jnp.sum(jnp.abs(new_agent_position - env_state.target_position))
-    # Scaling of manhattan distance change (theta 4)
-    reward = (manhat_dist_old - manhat_dist_new) * reward_parameters.manhattan_distance_scaling
+    reward = (manhat_dist_old - manhat_dist_new)
 
-    # Adding reward noise (theta 5)
-    computed_noise = jax.random.normal(rng_noise) * reward_parameters.noise
-    reward += computed_noise
-
-    # Scaling with reward scaling factor (theta 6)
+    # Scaling with reward scaling factor (theta 4)
     reward *= reward_parameters.scaling_factor
 
     # Shift with reward shift (theta 3)
@@ -43,22 +38,23 @@ def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_
 
     rng, key = jax.random.split(rng)
     rand_values = jax.random.uniform(key, shape=(max_steps,))
+
     delay_threshold = jnp.full(shape=(max_steps, ), fill_value=delay_prob, dtype=jnp.float64)
 
     index_mask = jnp.where(rand_values < delay_threshold, False, True)
 
     accumulated_reward_in_step = jnp.sum(jnp.where(index_mask==True, updated_delayed_rewards, jnp.float64(0.0)))
+
     remaining_rewards = jnp.where(index_mask==False, updated_delayed_rewards, jnp.float64(0.0))
 
-    '''
     ### If condition required for flushing the buffer if episode done
     accumulated_reward_in_step = jax.lax.cond(
         done,
-        lambda: accumulated_reward_in_step + jnp.sum(remaining_rewards),
-        lambda: accumulated_reward_in_step,
-        operand=None
+        lambda remaining_rewards : accumulated_reward_in_step + jnp.sum(remaining_rewards),
+        lambda remaining_rewards: accumulated_reward_in_step,
+        operand=remaining_rewards
     )
-    '''
+
     return accumulated_reward_in_step, remaining_rewards
 
 def compute_reward(reward_state):
@@ -70,12 +66,9 @@ def compute_reward(reward_state):
         remaining_rewards (jnp.ndarray): Keeps track of all delayed rewards
     """
     rng, env_state, new_agent_position, terminated, reached_term, done, reward_parameters = reward_state
-
     reward = jnp.float64(0.0)
-
     rng, rng_noise = jax.random.split(rng)
-
-    normal_step_params = (rng_noise, reward_parameters, env_state, new_agent_position)
+    normal_step_params = (reward_parameters, env_state, new_agent_position)
 
     # Reward structure: three different cases: Reaching target, reaching terminal failure state, normal step
     reward = jax.lax.cond(
@@ -88,6 +81,11 @@ def compute_reward(reward_state):
             operand=normal_step_params,
         )
     )
+
+    # Adding reward noise to the reward signal
+    rng, rng_noise = jax.random.split(rng)
+    computed_noise = jax.random.normal(rng_noise) * reward_parameters.noise
+    reward += computed_noise
 
     reward_in_step, delayed_rewards = compute_delayed_rewards(rng, reward, reward_parameters.delay_prob, env_state.delayed_rewards, done)
     

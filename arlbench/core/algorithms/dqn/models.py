@@ -10,7 +10,7 @@ class CNNQ(nn.Module):
     """A CNN-based Q-Network for DQN."""
 
     action_dim: int
-    activation: str = "tanh"
+    activation: str = "relu"
     hidden_size: int = 512
     discrete: bool = True
 

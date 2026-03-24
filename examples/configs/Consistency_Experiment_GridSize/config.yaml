@@ -1,0 +1,28 @@
+autorl:
+  algorithm: dqn
+  checkpoint: []
+  checkpoint_dir: /tmp
+  checkpoint_name: default_checkpoint
+  cnn_policy: false
+  env_framework: mdp
+  n_envs: 1
+  n_eval_episodes: 100
+  n_eval_steps: 10
+  n_total_timesteps: 100000
+  nas_config:
+    activation: relu
+    hidden_size: 64
+  objectives:
+  - reward_mean
+  optimize_objectives: upper
+  seed: 42
+  state_features: []
+hydra:
+  job:
+    chdir: true
+  run:
+    dir: results/Consistency_Experiment_GridSize
+  sweep:
+    dir: results/Consistency_Experiment_GridSize
+jax_enable_x64: true
+load_checkpoint: ''

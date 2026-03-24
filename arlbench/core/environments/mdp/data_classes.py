@@ -22,10 +22,7 @@ class RewardParameters():
     # Theta 3 in thesis
     shift: float = 0.0
     # Theta 4 in thesis
-    manhattan_distance_scaling: float = 1.0
-    # Theta 5 in thesis
-    noise: float = 0.0
-    # Theta 6 in thesis
     scaling_factor: float = 1.0
+    noise: float = 0.0
     delay_prob: float = 1.0
     probability: float = 1.0

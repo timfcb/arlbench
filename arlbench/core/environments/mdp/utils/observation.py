@@ -5,6 +5,7 @@ from jax.random import PRNGKey
 from typing import TYPE_CHECKING, Any, Tuple
 from ..spaces import BoxExtended, ImageContinuous
 
+from debug_utils import plot_imgs
 
 # Greyscaling used in Atari preprocessing (https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
@@ -21,7 +22,6 @@ def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
     greyscale_image = 0.299 * R + 0.587 * G + 0.114 * B
     greyscale_image = jnp.expand_dims(greyscale_image, axis=-1)
     return greyscale_image
-
 
 def get_obs(state_representation: str, number_terminal_states: int, grid_shape: Tuple[int, int], observation_space: Any, env_state:Any) -> Any:
     """Computes the observation based on the state representation (image, vector, matrix).
@@ -41,10 +41,19 @@ def get_obs(state_representation: str, number_terminal_states: int, grid_shape: 
     # Image returns a greyscaled image
     if state_representation == 'image':
         rgb_image = observation_space.generate_image(env_state, grid_shape, number_terminal_states)
-        observation = rgb_to_greyscale(rgb_image)
+        grayscaled_img = rgb_to_greyscale(rgb_image)
+
+        # Normalize observation
+        #observation = grayscaled_img / 255.0
+        jax.debug.callback(plot_imgs, rgb_image)
+        observation = grayscaled_img
+        #jax.debug.callback(save_obs, observation)
+
     # Vector returns a 4 dimensional vector with agent and target positions
     elif state_representation == 'vector':
-        observation = jnp.concatenate([agent_position, target_position, terminal_states.flatten()])
+        vector = jnp.concatenate([agent_position, target_position, terminal_states.flatten()])
+        observation = vector / (grid_shape[0]-1)
+
     # Matrix returns a matrix with 0 for empty cells, 1 for agent position and 2 for target position
     elif state_representation == 'matrix':
 
@@ -56,9 +65,9 @@ def get_obs(state_representation: str, number_terminal_states: int, grid_shape: 
             grid_matrix_terminal = jnp.zeros(grid_shape, dtype=jnp.int64)
             xs, ys = terminal_states[:, 0], terminal_states[:, 1]
             grid_matrix_terminal = grid_matrix_terminal.at[ys, xs].set(1)
-            grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target, grid_matrix_terminal], axis=2)
+            grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target, grid_matrix_terminal], axis=0)
         else:
-            grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target], axis=2)
+            grid_matrix = jnp.stack([grid_matrix_agent, grid_matrix_target], axis=0)
 
         observation = grid_matrix
 
