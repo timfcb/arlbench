@@ -4,13 +4,13 @@ import submitit
 import sys
 import subprocess
 import hydra
+import copy
 from omegaconf import DictConfig, OmegaConf
 from configs import create_experiment
 from experiment import execute_arlbench
 from hydra import initialize, compose
 from metrics import compute_thc
 from utils import results_to_csv
-from visualize import plot_results
 import numpy as np
 import pandas as pd
 from itertools import product
@@ -63,6 +63,9 @@ def run(cfg : DictConfig):
     all_configs = list(product(*[range(length) for length in list_number_props]))
     all_config_ids = list(range(len(all_configs)))
 
+    print(f'Env Property Names: {env_property_names}')
+    print(f'All configs: {all_configs}')
+
     ### Logging that files were created ###
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -107,6 +110,8 @@ def run(cfg : DictConfig):
             prop_value = cfg['env_config'][env_property]['values'][config[i]]
             env_kwargs[env_property] = prop_value
 
+        print(env_kwargs)
+
         ### Assign eval env with every env kwarg that does not belong to reward structure:
         eval_kwargs['grid_shape'] = env_kwargs['grid_shape']
         eval_kwargs['transition_noise'] = env_kwargs['transition_noise']
@@ -131,10 +136,12 @@ def run(cfg : DictConfig):
         for hp, value_range in hp_values.items():
 
             hp_results = []
-            for value in value_range:
-                
-                hp_defaults[hp] = value
-                cfg_exp.hp_config = hp_defaults
+            for value in value_range:  
+
+                hp_dict = copy.deepcopy(hp_defaults)
+
+                hp_dict[hp] = value
+                cfg_exp.hp_config = hp_dict
 
                 seed_results = []
                 for seed in different_seeds:
@@ -142,6 +149,7 @@ def run(cfg : DictConfig):
                     cfg_exp.autorl.seed = seed
 
                     objective = round(execute_arlbench(cfg_exp, logger=logger),4)
+
                     seed_results.append(objective)
 
                 hp_results.append(seed_results)
@@ -164,7 +172,7 @@ def run(cfg : DictConfig):
         if device=='cpu':
             executor.update_parameters(
                 job_name=experiment_name,
-                time='08:00:00',
+                time='24:00:00',
                 cpus_per_task=24,
                 account='thes1998',
                 nodes=1,
@@ -206,26 +214,14 @@ def run(cfg : DictConfig):
         scheduled_jobs = 0
         running_jobs = []
 
-        while successfully_finished_jobs < number_jobs:
+        while scheduled_jobs < number_jobs:
 
             # Jobs that are done and succesfully finished (no exception) are added to finished jobs
-            finished_jobs.extend([job for job in running_jobs if job.done() and job.exception() is None])
-            logging.info(f'Number of finished jobs: {len(finished_jobs)}')
-
-            # Workaround for resubmitting failed jobs
-            # Get indices of failed jobs
-            failed_jobs_indices = [i for i, job in enumerate(running_jobs) if job.done() and job.exception() is not None]
-
-            # Resubmit failed jobs
-            for index in failed_jobs_indices:
-
-                job = executor.submit(arlbench, all_configs[index], all_config_ids[index])
-                
-                # Replace failed and done job with new job submission at the correct index in running jobs
-                running_jobs[index] = job
+            #finished_jobs.extend([job for job in running_jobs if job.done() and job.exception() is None])
+            #logging.info(f'Number of finished jobs: {len(finished_jobs)}')
 
             # Update running jobs list
-            running_jobs = [job for job in running_jobs if not job.done()]
+            #running_jobs = [job for job in running_jobs if not job.done()]
 
             # In total running jobs on cluster for project
             number_active_jobs = subprocess.run('squeue --array -A thes1998 -h | wc -l', capture_output=True, shell=True, text=True)
@@ -244,9 +240,9 @@ def run(cfg : DictConfig):
 
             logging.info(f'Current number of running jobs on SLURM: {end_episode}')
 
-            successfully_finished_jobs = len(finished_jobs)
+            #successfully_finished_jobs = len(finished_jobs)
 
-            logging.info(f'Currently succesfully finished jobs: {successfully_finished_jobs}/{number_jobs}')
+            #logging.info(f'Currently succesfully finished jobs: {successfully_finished_jobs}/{number_jobs}')
             time.sleep(120)
 
     ## Requires Update
@@ -265,6 +261,7 @@ def run(cfg : DictConfig):
             max_value=len(all_config_ids)
         )
         b.start()
+
 
         for i in range(len(all_config_ids)):
             objective = arlbench(all_configs[i], all_config_ids[i])

@@ -40,11 +40,8 @@ class GridEnv:
             self.state_representation = config['state_representation']
         else:
             self.state_representation = 'vector'
-
-        #if 'max_steps_in_episode' in config:
-        #    self.max_steps_in_episode = config['max_steps_in_episode']
-        #else:
-            
+        
+        # Maximum number of steps within one episode depends on the grid size
         self.max_steps_in_episode = 2 * (self.grid_shape[0] + self.grid_shape[1])
 
         if 'transition_noise' in config:
@@ -100,6 +97,7 @@ class GridEnv:
         else:
             delay_prob = 0.0
 
+        # Env properties belonging to the reward are wrapped into RewardParameters data class
         self.reward_parameters = RewardParameters(
             success_reward=success_reward,
             terminal_state_penalty=terminal_state_penalty,
@@ -174,6 +172,7 @@ class GridEnv:
             counter=env_state.counter + 1,
         )
 
+        # Fetch observation after executing environment step
         observation = get_obs(
             self.state_representation,
             self.number_terminal_states,
@@ -209,6 +208,7 @@ class GridEnv:
             n=(2 + self.number_terminal_states),
         )
 
+        # Initialise environmental state at the beginning of the episode
         env_state = EnvState(
             agent_position=agent_position,
             target_position=target_position,
@@ -217,6 +217,7 @@ class GridEnv:
             counter=1,
         )
 
+        # Fetch observation from initial state of the episode
         observation = get_obs(
             self.state_representation,
             self.number_terminal_states,

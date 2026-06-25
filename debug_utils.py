@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import time
 
 def save_timestep(timestep, global_step):
     file1 = open("image.txt", "a")
@@ -14,12 +15,11 @@ def save_timestep_eval(timestep):
     file1.close()
 
 
-def plot_imgs(obs):
+def plot_imgs(obs,name):
     plt.imshow(obs)
     plt.axis('off')
+    plt.savefig(f"{name}.pdf", bbox_inches='tight')
     plt.show()
-    plt.savefig("plot.pdf", format="pdf")  
-
 
 def save_obs(observation):
     file1 = open("obs.txt", "a")

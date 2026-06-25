@@ -5,20 +5,20 @@ hp_config:
   buffer_alpha: 0.9
   buffer_beta: 0.9
   buffer_epsilon: 0.001
-  buffer_batch_size: 32
-  buffer_size: 100000
-  initial_epsilon: 1.0
-  target_epsilon: 0.01
-  exploration_fraction: 0.5
-  gamma: 0.99
-  gradient_steps: 1
-  learning_rate: 0.0001
-  learning_starts: 1000
+  buffer_batch_size: 16
+  buffer_size: 10000
+  initial_epsilon: 0.9
+  target_epsilon: 0.005
+  exploration_fraction: 0.4
+  gamma: 0.9
+  gradient_steps: 10
+  learning_rate: 6.25e-05
+  learning_starts: 2200
   normalize_observations: False
   train_freq: 4
   use_target_network: True
   target_update_interval: 1000
-  tau: 1.0
+  tau: 0.7
 nas_config:
   activation: relu
-  hidden_size: 512
+  hidden_size: 64

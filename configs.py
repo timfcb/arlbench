@@ -1,11 +1,8 @@
 import warnings
 warnings.filterwarnings("ignore")
 
-import jax
 import os
 import yaml
-import hydra
-import datetime
 from omegaconf import DictConfig, OmegaConf
 from itertools import product
 from collections import OrderedDict
@@ -38,7 +35,7 @@ def create_experiment(cfg : DictConfig):
     seeds = grid_dict['different_seeds']
 
     create_file(base_dict, path, grid_dict, nas_config, experiment_name)
-
+ 
     env_kwargs, env_cardinalities, env_property_names = get_env_properties(grid_dict)
 
     hp_defaults, hp_values = get_hp_properties(grid_dict)  
@@ -63,7 +60,7 @@ def create_file(config, path, grid_dict, nas_config, result_folder):
 
     # Create autorl config
     autorl_dict = {}
-    autorl_dict['seed'] = grid_dict['seed']
+    #autorl_dict['seed'] = grid_dict['seed']
     autorl_dict['env_framework'] = 'mdp'
     autorl_dict['n_envs'] = grid_dict['n_envs']
     autorl_dict['algorithm'] = 'dqn'

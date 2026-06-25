@@ -45,7 +45,8 @@ def get_obs(state_representation: str, number_terminal_states: int, grid_shape: 
 
         # Normalize observation
         #observation = grayscaled_img / 255.0
-        jax.debug.callback(plot_imgs, rgb_image)
+        #jax.debug.callback(plot_imgs, rgb_image, 1)
+        #jax.debug.callback(plot_imgs, grayscaled_img, 2)
         observation = grayscaled_img
         #jax.debug.callback(save_obs, observation)
 

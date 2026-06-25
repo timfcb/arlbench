@@ -138,15 +138,20 @@ def get_data(experiment_name, hp_name, hp_values, number_seeds):
     df_data = pd.read_csv(path, sep=',')
     number_envs = df_data.shape[0]
 
-    data = np.zeros((number_envs, len(hp_values), number_seeds))
+    number_values = len(hp_values)
+
+    data = np.zeros((number_envs, number_values, number_seeds))
     for ind_env in range(number_envs):
 
-        for ind_value in range(len(hp_values)):
+        for ind_value in range(number_values):
+
+            ind_value_data = ind_value
+            access_data_value = ind_value
 
             for ind_seed in range(number_seeds):
 
-                performance = df_data.iloc[ind_env, ind_value * number_seeds + ind_seed]
-                data[ind_env][ind_value][ind_seed] = performance
+                performance = df_data.iloc[ind_env, (access_data_value * number_seeds + ind_seed)+1]
+                data[ind_env][ind_value_data][ind_seed] = performance
 
     return data
 

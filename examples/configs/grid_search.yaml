@@ -1,37 +1,35 @@
 # Parameters for Grid Search Experiment
-experiment_name: 'Consistency_Experiment_GridSize'
+experiment_name: 'Grid_search_TermStates'
 state_representation: vector
 cnn_policy: False
 n_total_timesteps: 100000
-grid_shape: [8, 8]
 n_envs: 1
-seed: 42
 n_eval_steps: 10
 n_eval_episodes: 100
-different_seeds: [1,2]
+different_seeds: [0,10,20,30,40]
 device: 'cpu'
 
 # Environment Properties for Grid Search
 # 5 Values pro Property
 env_config:
   grid_shape:
-    values: [[4,4], [6,6]]
+    values: [[8,8]]
   transition_noise:
-    values: [0.0]
+    values: [0.0,0.1,0.2,0.3,0.4]
   number_terminal_states:
-    values: [0]
+    values: [2,3,4,5,6]
   success_reward:
     values: [1.0]
   terminal_state_penalty:
-    values: [0.0]
+    values: [-1.0]
   reward_shift:
-    values: [0.0]
+    values: [-0.1,-0.2,-0.3,-0.4,-0.5]
   reward_noise:
-    values: [0.0]
+    values: [0.0,0.1,0.2,0.3,0.4]
   reward_scaling_factor:
     values: [0.0]
   reward_probability:
-    values: [1.0]
+    values: [0.6,0.7,0.8,0.9,1.0]
   reward_delay_prob:
     values: [0.0]
 ### N_envs tunen (rel. to train_freq)
@@ -41,7 +39,7 @@ env_config:
 hp_config:
   buffer_prio_sampling: 
     value_range: []
-    default: false
+    default: False
   buffer_alpha: 
     value_range: []
     default: 0.9
@@ -52,17 +50,17 @@ hp_config:
     value_range: []
     default: 0.001
   buffer_batch_size: 
-    value_range: [32,64]
-    default: 64
+    value_range: [16,32,64]
+    default: 16
   buffer_size:
-    value_range: [1000, 5000]
-    default: 5000
+    value_range: [1000,5000,10000]
+    default: 10000
   initial_epsilon: 
     value_range: []
-    default: 0.95
+    default: 0.9
   target_epsilon:
     value_range: []
-    default: 0.0
+    default: 0.005
   exploration_fraction: 
     value_range: []
     default: 0.4
@@ -71,28 +69,28 @@ hp_config:
     default: 0.9
   gradient_steps: 
     value_range: []
-    default: 5
+    default: 10
   learning_rate:
     value_range: []
     default: 6.25e-05
   learning_starts:
     value_range: []
-    default: 500
+    default: 2200
   normalize_observations:
     value_range: []
-    default: false
+    default: False
   train_freq:
     value_range: []
-    default: 1
+    default: 4
   use_target_network:
     value_range: []
-    default: true
+    default: True
   target_update_interval:
     value_range: []
     default: 1000
   tau: 
     value_range: []
-    default: 1.0
+    default: 0.7
 
 # Neural Archticecture Search Configurations
 nas_config:

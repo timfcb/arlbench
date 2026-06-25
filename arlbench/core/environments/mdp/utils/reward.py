@@ -4,7 +4,13 @@ from typing import TYPE_CHECKING, Any
 
 
 def reward_normal_step(args):
+    """Computes the reward signal for a normal step in the environment. For more information consider 3rd case of piecewise defined function (Section 4.3.2 in thesis)
+    Args:
+        args (tuple): reward_parameters, env_state, new_agent_position
 
+    Returns:
+       reward(jnp.float64): Base reward signal of the agent obtained for conducting a normal move in the environment that neither reaches the goal nor a failure cell
+    """
     reward_parameters, env_state, new_agent_position = args
 
     # Dense reward: Reward is given for every step (change in manhattan distance to target)
@@ -50,7 +56,7 @@ def compute_delayed_rewards(rng: jax.random.PRNGKey, reward: jnp.float64, delay_
     ### If condition required for flushing the buffer if episode done
     accumulated_reward_in_step = jax.lax.cond(
         done,
-        lambda remaining_rewards : accumulated_reward_in_step + jnp.sum(remaining_rewards),
+        lambda remaining_rewards: accumulated_reward_in_step + jnp.sum(remaining_rewards),
         lambda remaining_rewards: accumulated_reward_in_step,
         operand=remaining_rewards
     )

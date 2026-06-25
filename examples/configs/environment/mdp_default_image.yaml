@@ -1,32 +1,30 @@
-name: 'Mdp_HPO_12'
-framework: 'mdp'
+name: "Mdp_Default_image_14"
+framework: "mdp"
 n_total_timesteps: 100000
 kwargs:
-  seed: 1
-  grid_shape: [5, 5]
-  state_representation: image
+  grid_shape: [14, 14]
   transition_noise: 0.0
-  number_terminal_states: 2
+  number_terminal_states: 0
+  reward_shift: -0.1
   success_reward: 1.0
   terminal_state_penalty: -1.0
-  reward_shift: -0.1
   reward_noise: 0.0
   reward_scaling_factor: 0.0
-  reward_delay_prob: 1.0
   reward_probability: 1.0
-eval_kwargs:
-  seed: 1
-  grid_shape: [5, 5]
+  reward_delay_prob: 0.0
   state_representation: image
+eval_kwargs:
+  grid_shape: [14, 14]
   transition_noise: 0.0
-  number_terminal_states: 2
+  number_terminal_states: 0
+  reward_shift: 0.0
   success_reward: 1.0
   terminal_state_penalty: 0.0
-  reward_shift: 0.0
   reward_noise: 0.0
   reward_scaling_factor: 0.0
-  reward_delay_prob: 0.0
   reward_probability: 1.0
+  reward_delay_prob: 0.0
+  state_representation: image
 cnn_policy: True
 deterministic_eval: True
 jax_enable_x64: True

@@ -353,7 +353,6 @@ class AutoRLEnv(gymnasium.Env):
             try:
                 self._algorithm_state = self._load(checkpoint_path, seed)
             except Exception as e: # noqa: BLE001
-                print(e)
                 init_rng = jax.random.key(seed)
                 self._algorithm_state = self._algorithm.init(init_rng)
         elif self._algorithm_state is None:

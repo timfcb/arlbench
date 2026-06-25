@@ -72,15 +72,10 @@ class ImageContinuous(gymnax.environments.spaces.Box):
         grid_thickness = 1
         # black
         line_colour = (0, 0, 0)
-        # agent color
-        terminal_state_colour = (0, 255, 255)
-        # target colour
-        target_colour = (255, 255, 0)
-        # terminal state color
-        agent_colour = (0,0,255)
-        # agent reaches target
+        terminal_state_colour = (0,0,255)
         goal_colour = (0,255,0)
-        # agent reaches terminal state
+        agent_colour = (0,255,0)
+        target_colour = (255,0,0)
         fail_colour = (255,0,0)
 
         # White img with 84x84 pixels
