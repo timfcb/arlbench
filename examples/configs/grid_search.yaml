@@ -1,41 +1,39 @@
+# Interface to start the experiment on hyperparameter transferability
 # Parameters for Grid Search Experiment
-experiment_name: 'Grid_search_TermStates'
+experiment_name: 'Grid Search'
 state_representation: vector
 cnn_policy: False
 n_total_timesteps: 100000
 n_envs: 1
 n_eval_steps: 10
 n_eval_episodes: 100
-different_seeds: [0,10,20,30,40]
+different_seeds: [0,10,20]
 device: 'cpu'
 
-# Environment Properties for Grid Search
-# 5 Values pro Property
+# Environment Properties for Grid Search: Define value ranges for each environment property that should be investigated
 env_config:
   grid_shape:
     values: [[8,8]]
   transition_noise:
-    values: [0.0,0.1,0.2,0.3,0.4]
+    values: [0.0,0.1]
   number_terminal_states:
-    values: [2,3,4,5,6]
+    values: [2,3]
   success_reward:
     values: [1.0]
   terminal_state_penalty:
     values: [-1.0]
   reward_shift:
-    values: [-0.1,-0.2,-0.3,-0.4,-0.5]
+    values: [0.0]
   reward_noise:
-    values: [0.0,0.1,0.2,0.3,0.4]
+    values: [0.0]
   reward_scaling_factor:
     values: [0.0]
   reward_probability:
-    values: [0.6,0.7,0.8,0.9,1.0]
+    values: [1.0]
   reward_delay_prob:
     values: [0.0]
-### N_envs tunen (rel. to train_freq)
-# Minigrid anschauen
 
-# Hyperparameters for Grid Search
+# Hyperparameters for Grid Search: Define Value ranges for each hyperparameter value that should be investigated
 hp_config:
   buffer_prio_sampling: 
     value_range: []
@@ -50,13 +48,13 @@ hp_config:
     value_range: []
     default: 0.001
   buffer_batch_size: 
-    value_range: [16,32,64]
+    value_range: [4,8,16,32,64]
     default: 16
   buffer_size:
-    value_range: [1000,5000,10000]
+    value_range: [500,1000,5000,10000]
     default: 10000
   initial_epsilon: 
-    value_range: []
+    value_range: [0.7,0.8,0.9]
     default: 0.9
   target_epsilon:
     value_range: []
@@ -65,10 +63,10 @@ hp_config:
     value_range: []
     default: 0.4
   gamma:
-    value_range: []
+    value_range: [0.9,0.95,0.99,0.999]
     default: 0.9
   gradient_steps: 
-    value_range: []
+    value_range: [1,2,3,4,5,6]
     default: 10
   learning_rate:
     value_range: []
@@ -86,10 +84,10 @@ hp_config:
     value_range: []
     default: True
   target_update_interval:
-    value_range: []
+    value_range: [500,1000,1500,2000,2500,3000]
     default: 1000
   tau: 
-    value_range: []
+    value_range: [0.6,0.7,0.8,0.9,1.0]
     default: 0.7
 
 # Neural Archticecture Search Configurations

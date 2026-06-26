@@ -5,8 +5,6 @@ from jax.random import PRNGKey
 from typing import TYPE_CHECKING, Any, Tuple
 from ..spaces import BoxExtended, ImageContinuous
 
-from debug_utils import plot_imgs
-
 # Greyscaling used in Atari preprocessing (https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 def rgb_to_greyscale(rgb_image: jnp.ndarray) -> jnp.ndarray:
     """Converts an RGB image to greyscale by extracting the Y channel.

@@ -1,3 +1,4 @@
+"""Framework to measure hyperparameter transferability across grid-world environments, Execution inspired from https://arxiv.org/pdf/2406.17523"""
 import os
 
 import submitit
@@ -9,7 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 from configs import create_experiment
 from experiment import execute_arlbench
 from hydra import initialize, compose
-from metrics import compute_thc
+from metrics import compute_thc, compute_top1_inconsistency, compute_lpi_score, rankings_friedman
 from utils import results_to_csv
 import numpy as np
 import pandas as pd
@@ -22,6 +23,8 @@ import progressbar
 import warnings
 warnings.filterwarnings("ignore")
 
+# Entry Point to the transferability experiment
+# To modify the investigated environment properties and hyperparameters modify file: examples/configs/grid_search.yaml
 
 @hydra.main(version_base=None, config_path="examples/configs", config_name="grid_search")
 def run(cfg : DictConfig):
@@ -31,13 +34,14 @@ def run(cfg : DictConfig):
     logging.getLogger("jax._src.xla_bridge").setLevel(logging.WARNING)
     absl_logging.set_verbosity('error')
 
+    # Check whether system is in SLURM environment
     if "SLURM_JOB_ID" in os.environ:
         cluster = True
     else:
         os.environ["JAX_PLATFORMS"] = "cpu"
         cluster = False
 
-    ### Make device selection dependent on config cfg
+    # Device selection based on state representation
     state_repr = cfg['state_representation']
     device_config = cfg['device']
     if state_repr == 'vector':
@@ -63,9 +67,6 @@ def run(cfg : DictConfig):
     all_configs = list(product(*[range(length) for length in list_number_props]))
     all_config_ids = list(range(len(all_configs)))
 
-    print(f'Env Property Names: {env_property_names}')
-    print(f'All configs: {all_configs}')
-
     ### Logging that files were created ###
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -85,7 +86,7 @@ def run(cfg : DictConfig):
     silent_logger.propagate = False
     silent_logger.setLevel(logging.CRITICAL + 1)
 
-    # Reward function parameters for evaluation: Identical on all environments
+    # Reward function parameters for evaluation: Identical on all environments (Identical Reward function for all runs in the entire experiment)
     eval_kwargs = {
         'success_reward': 1.0,
         'terminal_state_penalty': 0.0,
@@ -96,21 +97,20 @@ def run(cfg : DictConfig):
         'reward_delay_prob': 0.0,
     }
 
+    # Code of a single job on the cluster
     def arlbench(config, config_id, folder=result_folder, logger=logger):
 
-        # Check if experiment already done -> In case main function breaks on SLURM
+        # Check if experiment already done -> If yes: Job was already executed
         possible_file_name = f'{folder}/config_{config_id}.npz'
         if os.path.exists(possible_file_name):
             return None
 
-        ### This creates env_kwargs dict for base_config
+        # Creating env_kwargs dict for base_config
         env_kwargs = {}
-        # Erzeuge eval_kwargs dict:
+        # Create eval_kwargs dict:
         for i, env_property in enumerate(env_property_names):
             prop_value = cfg['env_config'][env_property]['values'][config[i]]
             env_kwargs[env_property] = prop_value
-
-        print(env_kwargs)
 
         ### Assign eval env with every env kwarg that does not belong to reward structure:
         eval_kwargs['grid_shape'] = env_kwargs['grid_shape']
@@ -124,7 +124,7 @@ def run(cfg : DictConfig):
         ## Merge env properties into cfg
         cfg_exp.autorl.env_kwargs = env_kwargs
 
-        # Evaluation environment consist only on default properties --> Comparability of policy evaluation
+        # Evaluation environment consist only of default assignemnts in the reward properties --> Comparability of policy evaluation
         cfg_exp.autorl.eval_env_kwargs = eval_kwargs
 
         # Set env name for this experiment
@@ -132,7 +132,7 @@ def run(cfg : DictConfig):
 
         objectives = []
 
-        # Inhomogeneous as hyperparameters have different value sizes
+        # Running the local hyperparameter sweeps in the given environment for each hyperparameter
         for hp, value_range in hp_values.items():
 
             hp_results = []
@@ -144,10 +144,13 @@ def run(cfg : DictConfig):
                 cfg_exp.hp_config = hp_dict
 
                 seed_results = []
+
+                # Performing each run for the number of specified seeds
                 for seed in different_seeds:
                     # Set seed in cfg
                     cfg_exp.autorl.seed = seed
 
+                    # Objective is the single performance value obtained for a single run
                     objective = round(execute_arlbench(cfg_exp, logger=logger),4)
 
                     seed_results.append(objective)
@@ -158,6 +161,7 @@ def run(cfg : DictConfig):
             # objectives is a list of arrays (arrays do not necessarily have the same shape)
             objectives.append(hp_exp)
 
+        # Saving the results of the local hyperparameter sweeps for each hyperparameter measured in environment of id i in file npz file config_i.npz
         with open(possible_file_name, 'wb') as f:
             np.savez(f, *objectives)
 
@@ -209,25 +213,18 @@ def run(cfg : DictConfig):
 
         number_jobs = len(all_configs)
 
-        finished_jobs = []
-        successfully_finished_jobs = 0
         scheduled_jobs = 0
         running_jobs = []
 
+        # Schedules jobs until all jobs of this experiment are executed
         while scheduled_jobs < number_jobs:
-
-            # Jobs that are done and succesfully finished (no exception) are added to finished jobs
-            #finished_jobs.extend([job for job in running_jobs if job.done() and job.exception() is None])
-            #logging.info(f'Number of finished jobs: {len(finished_jobs)}')
-
-            # Update running jobs list
-            #running_jobs = [job for job in running_jobs if not job.done()]
 
             # In total running jobs on cluster for project
             number_active_jobs = subprocess.run('squeue --array -A thes1998 -h | wc -l', capture_output=True, shell=True, text=True)
 
             capacity = max_parallel_jobs - int(number_active_jobs.stdout)
 
+            # Checks if clusters capacity and in case schedules new jobs
             if capacity and scheduled_jobs < number_jobs:
 
                 job = executor.map_array(arlbench, all_configs[scheduled_jobs:scheduled_jobs+capacity], all_config_ids[scheduled_jobs:scheduled_jobs+capacity])
@@ -235,19 +232,16 @@ def run(cfg : DictConfig):
                 running_jobs.extend(job)
                 scheduled_jobs += number_submitted_jobs
 
+            # Tracks the number of currently running jobs connected to the account
             number_active_jobs = subprocess.run('squeue --array -A thes1998 -h | wc -l', capture_output=True, shell=True, text=True)
             end_episode = int(number_active_jobs.stdout)
 
             logging.info(f'Current number of running jobs on SLURM: {end_episode}')
 
-            #successfully_finished_jobs = len(finished_jobs)
-
-            #logging.info(f'Currently succesfully finished jobs: {successfully_finished_jobs}/{number_jobs}')
             time.sleep(120)
 
-    ## Requires Update
+    # Only for testing pipeline local
     else:
-        # Write code for local execution of pipeline
 
         b = progressbar.ProgressBar(
             widgets=[
@@ -272,13 +266,26 @@ def run(cfg : DictConfig):
     with open(f'{result_folder}/done.txt', 'w') as f:
         f.write(f'Experiment {experiment_name} done.')
 
-    # Collect results from all jobs
+    # Results from the local hyperparameter sweeps in each environment are written into a single file independently for each hyperparameter
     results_to_csv(hp_values, different_seeds, result_folder, all_config_ids)
 
-    ### Compute metrics e.g. THC
+    ### Applying statistical methods to investigate experimental results ###
+
+    # Computing THC metric with respect to the environments investigated in this experiment
     compute_thc(experiment_name, hp_values, len(different_seeds))
+
+    # Compute Top_1 Inconsistency for each hyperparameter with respect to
+    compute_top1_inconsistency(experiment_name, hp_values, len(different_seeds))
+
+    # Compute Local Parameter Importance for each hyperparameter in each of the investigated environments
+    compute_lpi_score(experiment_name, hp_values.keys(), list(hp_values.values()), len(all_configs),len(different_seeds))
+
+    # Executing the Friedman Test 
+    rankings_friedman(experiment_name, hp_values.keys(),list(hp_values.values()),len(different_seeds))
     
     logger.info(f'Experiment finished: {len(all_config_ids)}/{len(all_config_ids)} Jobs done.')
 
+
+# Entry point to the transferability experiments
 if __name__ == '__main__':
     run()

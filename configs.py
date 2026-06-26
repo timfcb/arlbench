@@ -7,7 +7,6 @@ from omegaconf import DictConfig, OmegaConf
 from itertools import product
 from collections import OrderedDict
 import numpy as np
-from utils import remove_points
 
 
 def create_experiment(cfg : DictConfig):
